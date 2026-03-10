@@ -5,7 +5,7 @@
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     USER BROWSER                        │
-│                  localhost:3000                         │
+│                   https://vps:3000                      │
 └──────────────────────────┬──────────────────────────────┘
                            │
                     1. Upload file
@@ -13,7 +13,7 @@
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                   FRONTEND (Nginx)                      │
+│                VPS — FRONTEND (Nginx)                   │
 │                                                         │
 │  - Validates file type (PDF / TXT / DOCX)               │
 │  - Validates file size                                  │
@@ -25,8 +25,8 @@
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  BACKEND (FastAPI)                      │
-│                  backend:8000                           │
+│                VPS — BACKEND (FastAPI)                  │
+│                   backend:8000                          │
 │                                                         │
 │  parser.py                                              │
 │  ┌──────────────────────────────────────┐               │
@@ -34,7 +34,6 @@
 │  │  if .docx → python-docx              │               │
 │  │  if .txt  → direct read              │               │
 │  └──────────────┬───────────────────────┘               │
-│                 │                                       │
 │                 │  extracted plain text                 │
 │                 ▼                                       │
 │  llm.py                                                 │
@@ -46,26 +45,31 @@
 │  └──────────────┬───────────────────────┘               │
 └─────────────────┼───────────────────────────────────────┘
                   │
-         3. POST /api/chat
-         { model, messages }
+         3. POST http://localhost:11434/api/chat
+            (via SSH tunnel → GPU server)
+                  │
+  ════════════════╪════════════════════════════════════════
+  SSH TUNNEL      │         VPS localhost:11434
+                  │              ↕ tunneled
+                  │         GPU Server localhost:11434
+  ════════════════╪════════════════════════════════════════
                   │
                   ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  OLLAMA (Inference)                     │
-│                  ollama:11434                           │
+│             GPU SERVER — OLLAMA                         │
+│                localhost:11434                          │
 │                                                         │
-│  Model: Qwen3 32B (or OLLAMA_MODEL env var)             │
-│  GPU: 4x RTX A5000 via nvidia-container-toolkit         │
+│  Model: Qwen3 32B                                       │
+│  Hardware: 4x RTX A5000 (96GB VRAM)                     │
 │                                                         │
-│  Returns: streaming or full text response               │
+│  Returns: inference response                            │
 └──────────────────────────┬──────────────────────────────┘
                            │
-                  4. Response JSON
-                  { summary, key_points }
+                  4. Response (via tunnel)
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  BACKEND (FastAPI)                      │
+│                VPS — BACKEND (FastAPI)                  │
 │                                                         │
 │  - Parses Ollama response                               │
 │  - Structures output: { summary, key_points }           │
@@ -97,19 +101,23 @@ Frontend
   { session_id, question }
         │
         ▼
-Backend (FastAPI)
+Backend (FastAPI) — VPS
   - Retrieves document context for session
   - Builds messages array:
       [ system, document_context, chat_history..., user_question ]
-  - Sends to Ollama
+  - Sends to localhost:11434 (SSH tunnel)
+        │
+    [SSH tunnel]
         │
         ▼
-Ollama
+Ollama — GPU Server
   - Generates answer grounded in document context
   - Returns response text
         │
+    [SSH tunnel]
+        │
         ▼
-Backend
+Backend — VPS
   - Appends exchange to session chat history
   - Returns { answer }
         │
@@ -132,7 +140,12 @@ Upload → Server-side parse failure
         │
         └── Backend returns 400 { error: "Could not extract text from document" }
 
-Ollama → Timeout or unavailable
+SSH tunnel → Down or disconnected
+        │
+        └── Backend returns 503 { error: "Inference service unavailable" }
+            (tunnel must be re-established manually or via systemd restart)
+
+Ollama → Timeout or model not loaded
         │
         └── Backend returns 503 { error: "Inference service unavailable" }
 
@@ -144,16 +157,20 @@ All errors → Frontend displays inline error message, resets to upload state
 ## Data Boundaries
 
 ```
-┌──────────────────────────────────────┐
-│           HOST MACHINE               │
-│                                      │
-│  ┌──────────┐  ┌────────┐  ┌──────┐  │
-│  │ frontend │  │backend │  │ollama│  │
-│  └──────────┘  └────────┘  └──────┘  │
-│                                      │
-│  Docker internal network only        │
-│  No traffic exits this boundary      │
-└──────────────────────────────────────┘
+┌─────────────────────────────────┐     ┌──────────────────────────────┐
+│             VPS                 │     │         GPU SERVER            │
+│                                 │     │                              │
+│  ┌──────────┐  ┌─────────────┐  │     │  ┌────────────────────────┐  │
+│  │ frontend │  │   backend   │  │     │  │  Ollama (Qwen3 32B)    │  │
+│  │ (Nginx)  │  │  (FastAPI)  │  │     │  │  localhost:11434       │  │
+│  └──────────┘  └──────┬──────┘  │     │  └────────────────────────┘  │
+│                       │         │     │              ▲               │
+│               localhost:11434   │     │              │               │
+│                       │  SSH tunnel (encrypted)      │               │
+│                       └─────────────────────────────►│               │
+│                                 │     │                              │
+└─────────────────────────────────┘     └──────────────────────────────┘
 
-Internet ✗ — no outbound connections at any layer
+Document text travels:  Browser → VPS (HTTPS) → GPU Server (SSH tunnel)
+No data touches any third-party server at any point.
 ```

@@ -1,78 +1,158 @@
 # Infrastructure
 
-## Hardware
+## Two-Server Architecture
+
+The application runs across two separate machines:
+
+| Server | Role |
+|---|---|
+| **VPS** | Hosts the web app — frontend (Nginx) + backend (FastAPI) |
+| **GPU Server** | Runs Ollama inference — 4x RTX A5000, 96GB VRAM |
+
+The backend on the VPS reaches Ollama on the GPU server via a persistent SSH tunnel that forwards `localhost:11434` on the VPS to `localhost:11434` on the GPU server.
+
+---
+
+## Network Topology
+
+```
+User Browser
+     │  HTTPS
+     ▼
+  VPS (:3000)
+  ┌─────────────────────────────┐
+  │  frontend (Nginx)           │
+  │      │ /api/*               │
+  │      ▼                      │
+  │  backend (FastAPI) :8000    │
+  │      │ localhost:11434      │
+  │      ▼                      │
+  │  SSH Tunnel ─────────────────────────► GPU Server
+  │  (port forward)             │          Ollama :11434
+  └─────────────────────────────┘          Qwen3 32B
+```
+
+The backend always calls `http://localhost:11434` — it has no knowledge of the GPU server's IP. The tunnel makes the remote Ollama appear local.
+
+---
+
+## SSH Tunnel
+
+### Establish tunnel
+
+```bash
+ssh -i ~/.ssh/vastai_rsa \
+    -p 38511 \
+    root@<gpu-server-ip> \
+    -L 11434:localhost:11434 \
+    -N
+```
+
+| Flag | Purpose |
+|---|---|
+| `-L 11434:localhost:11434` | Forward VPS `localhost:11434` → GPU server `localhost:11434` |
+| `-N` | No remote command — tunnel only |
+| `-i ~/.ssh/vastai_rsa` | SSH key for GPU server auth |
+| `-p 38511` | Non-standard SSH port on GPU server |
+
+### Keep tunnel alive (production)
+
+Run via `autossh` or a systemd service so it reconnects on drop:
+
+```ini
+# /etc/systemd/system/ollama-tunnel.service
+[Unit]
+Description=SSH tunnel to Ollama GPU server
+After=network.target
+
+[Service]
+ExecStart=ssh -i /root/.ssh/vastai_rsa \
+              -p 38511 \
+              -L 11434:localhost:11434 \
+              -N -o ServerAliveInterval=60 \
+              -o ExitOnForwardFailure=yes \
+              root@<gpu-server-ip>
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl enable ollama-tunnel
+systemctl start ollama-tunnel
+```
+
+---
+
+## VPS Services (Docker Compose)
+
+```
+vault-docs (VPS)
+├── frontend    Nginx — static files + API proxy    :3000 (public)
+└── backend     FastAPI                             :8000 (internal)
+```
+
+Ollama is **not** in the VPS Docker Compose. It runs on the GPU server.
+
+The backend container must be able to reach `host.docker.internal:11434` (or use `network_mode: host`) to access the SSH tunnel on the VPS host.
+
+### Docker Compose — backend network access to tunnel
+
+Option A — host network mode (simplest):
+```yaml
+backend:
+  network_mode: host
+```
+
+Option B — extra_hosts:
+```yaml
+backend:
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+environment:
+  - OLLAMA_HOST=http://host.docker.internal:11434
+```
+
+---
+
+## GPU Server
+
+Ollama runs directly on the GPU server (not in Docker, or in Docker with GPU passthrough).
+
+```bash
+# Pull model (one-time)
+ollama pull qwen3:32b
+
+# Ollama listens on localhost:11434 by default
+# No exposure needed — SSH tunnel handles access from VPS
+```
 
 | Resource | Spec |
 |---|---|
 | GPUs | 4x NVIDIA RTX A5000 |
 | Total VRAM | 96GB |
-| Primary Model | Qwen3 32B |
-| Deployment Target | Single-node, on-premises |
+| Model | Qwen3 32B |
+| Ollama port | 11434 (localhost only) |
 
-## Services (Docker Compose)
+---
 
-```
-vault-docs
-├── frontend        Nginx serving static HTML/CSS/JS  :3000
-├── backend         FastAPI (Python)                  :8000
-└── ollama          Ollama inference server            :11434
-```
+## Environment Variables (VPS)
 
-All services are internal to the Docker network. Only the frontend port (`3000`) is exposed to the host. The backend and Ollama are not publicly accessible.
-
-## Network Topology
-
-```
-Host Machine
-│
-├── :3000  →  frontend (Nginx)
-│                │
-│                └── /api/*  →  backend:8000 (FastAPI)
-│                                    │
-│                                    └── ollama:11434 (Ollama)
-│
-└── No outbound connections
-```
-
-No traffic leaves the host. DNS resolution, model downloads, and all inference are local.
-
-## Ollama
-
-- Runs as a Docker service with GPU passthrough (`deploy.resources.reservations.devices`)
-- Model pulled at container startup via `ollama pull qwen3:32b`
-- API endpoint: `http://ollama:11434` (internal Docker DNS)
-- Model is configurable via `OLLAMA_MODEL` environment variable
-
-## Volumes
-
-| Volume | Purpose |
-|---|---|
-| `ollama-models` | Persists pulled models across container restarts |
-| `./uploads` | Temporary document storage during processing (in-memory preferred) |
-
-## Environment Variables
-
-| Variable | Default | Description |
+| Variable | Value | Description |
 |---|---|---|
-| `OLLAMA_MODEL` | `qwen3:32b` | Model name passed to Ollama |
-| `OLLAMA_HOST` | `http://ollama:11434` | Ollama API base URL |
-| `APP_PORT` | `3000` | Frontend exposed port |
-| `MAX_UPLOAD_SIZE_MB` | `50` | Maximum document upload size |
+| `OLLAMA_MODEL` | `qwen3:32b` | Model name |
+| `OLLAMA_HOST` | `http://localhost:11434` | Tunneled Ollama endpoint |
+| `APP_PORT` | `3000` | Public frontend port |
+| `MAX_UPLOAD_SIZE_MB` | `50` | Max upload size |
 
-## GPU Passthrough (Docker Compose)
+---
 
-```yaml
-deploy:
-  resources:
-    reservations:
-      devices:
-        - driver: nvidia
-          count: all
-          capabilities: [gpu]
-```
+## Startup Order
 
-Requires `nvidia-container-toolkit` installed on the host.
+1. Ensure SSH tunnel to GPU server is active
+2. Confirm Ollama is running on GPU server (`curl localhost:11434`)
+3. `docker compose up` on VPS
 
-## After Initial Setup
-
-Once models are pulled, the stack runs fully offline. No internet connection required for operation.
+The backend will fail requests (503) if the tunnel is down — it does not queue or retry. The tunnel must be established before the app serves traffic.
