@@ -77,7 +77,7 @@ User uploads document
    (stays on your machine)
 ```
 
-No data crosses a network boundary. The inference endpoint is `localhost`. The document never touches an external server.
+No data reaches a cloud provider or third-party service. Document text travels from your browser to a privately hosted VPS, then to a privately owned GPU server via encrypted SSH tunnel. Nothing touches a public cloud.
 
 ---
 
