@@ -64,7 +64,7 @@ User Browser
   │      ▼                      │
   │  SSH Tunnel ─────────────────────────► GPU Server
   │  (port forward)             │          Ollama :11434
-  └─────────────────────────────┘          Qwen3 32B
+  └─────────────────────────────┘          Qwen3.5 35B
 ```
 
 The backend always calls `http://localhost:11434` — it has no knowledge of the GPU server's IP. The tunnel makes the remote Ollama appear local.
@@ -85,10 +85,12 @@ ssh -i ~/.ssh/vastai_rsa \
 
 | Flag | Purpose |
 |---|---|
-| `-L 11434:localhost:11434` | Forward VPS `localhost:11434` → GPU server `localhost:11434` |
+| `-L 11434:localhost:11434` | Forward local `11434` → GPU server `localhost:11434` |
 | `-N` | No remote command — tunnel only |
 | `-i ~/.ssh/vastai_rsa` | SSH key for GPU server auth |
 | `-p 38511` | Non-standard SSH port on GPU server |
+
+> **Local dev note:** If port `11434` is already in use (e.g. a local Ollama instance), map to a different local port: `-L 11435:localhost:11434`. Then set `OLLAMA_HOST=http://localhost:11435` in your `.env`.
 
 ### Keep tunnel alive (production)
 
@@ -104,6 +106,7 @@ After=network.target
 ExecStart=ssh -i /root/.ssh/vastai_rsa \
               -p 38511 \
               -L 11434:localhost:11434 \
+              # VPS has no local Ollama — 11434 is free, no conflict
               -N -o ServerAliveInterval=60 \
               -o ExitOnForwardFailure=yes \
               root@<gpu-server-ip>
@@ -153,7 +156,7 @@ Ollama runs directly on the GPU server (not in Docker, or in Docker with GPU pas
 
 ```bash
 # Pull model (one-time)
-ollama pull qwen3:32b
+ollama pull qwen3.5:35b
 
 # Ollama listens on localhost:11434 by default
 # No exposure needed — SSH tunnel handles access from VPS
@@ -163,7 +166,7 @@ ollama pull qwen3:32b
 |---|---|
 | GPUs | 4x NVIDIA RTX A5000 |
 | Total VRAM | 96GB |
-| Model | Qwen3 32B |
+| Model | Qwen3.5 35B |
 | Ollama port | 11434 (localhost only) |
 
 ---
@@ -172,7 +175,7 @@ ollama pull qwen3:32b
 
 | Variable | Value | Description |
 |---|---|---|
-| `OLLAMA_MODEL` | `qwen3:32b` | Model name |
+| `OLLAMA_MODEL` | `qwen3.5:35b` | Model name |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Tunneled Ollama endpoint (via extra_hosts) |
 | `APP_PORT` | `3000` | Public frontend port |
 | `MAX_UPLOAD_SIZE_MB` | `50` | Max upload size |

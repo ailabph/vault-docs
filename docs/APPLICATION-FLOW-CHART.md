@@ -59,7 +59,7 @@
 │             GPU SERVER — OLLAMA                         │
 │                localhost:11434                          │
 │                                                         │
-│  Model: Qwen3 32B                                       │
+│  Model: Qwen3.5 35B                                       │
 │  Hardware: 4x RTX A5000 (96GB VRAM)                     │
 │                                                         │
 │  Returns: inference response                            │
@@ -161,7 +161,7 @@ All errors → Frontend displays inline error message, resets to upload state
 │             VPS                 │     │         GPU SERVER            │
 │                                 │     │                              │
 │  ┌──────────┐  ┌─────────────┐  │     │  ┌────────────────────────┐  │
-│  │ frontend │  │   backend   │  │     │  │  Ollama (Qwen3 32B)    │  │
+│  │ frontend │  │   backend   │  │     │  │  Ollama (Qwen3.5 35B)    │  │
 │  │ (Nginx)  │  │  (FastAPI)  │  │     │  │  localhost:11434       │  │
 │  └──────────┘  └──────┬──────┘  │     │  └────────────────────────┘  │
 │                       │         │     │              ▲               │

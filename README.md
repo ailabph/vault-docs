@@ -23,7 +23,7 @@ This is the first release in aiLab.ph's **Weekly Proof of Product** series — o
 
 | Layer | Technology |
 |---|---|
-| LLM Inference | [Ollama](https://ollama.com) with Qwen3 32B |
+| LLM Inference | [Ollama](https://ollama.com) with Qwen3.5 35B |
 | Document Parsing | Python (PyMuPDF, python-docx) |
 | Backend | FastAPI |
 | Frontend | Vanilla JS — dark theme |
@@ -37,7 +37,7 @@ Hardware tested on: 4x NVIDIA RTX A5000 (96GB total VRAM)
 
 ### Prerequisites
 - Docker and Docker Compose installed
-- GPU with sufficient VRAM (16GB+ recommended; 96GB for Qwen3 32B)
+- GPU with sufficient VRAM (24GB+ recommended; 96GB for Qwen3.5 35B)
 
 ### Run
 
@@ -65,7 +65,7 @@ User uploads document
   TXT → direct read
         │
         ▼
-  Ollama (Qwen3 32B)
+  Ollama (Qwen3.5 35B)
   ┌─────────────────┐
   │  Summary        │
   │  Key Points     │
@@ -87,7 +87,7 @@ Edit `docker-compose.yml` to change the model or port:
 
 ```yaml
 environment:
-  - OLLAMA_MODEL=qwen3:32b       # swap for any model you have pulled
+  - OLLAMA_MODEL=qwen3.5:35b     # swap for any model you have pulled
   - APP_PORT=3000
 ```
 
@@ -102,7 +102,7 @@ ollama pull mistral
 
 ## Performance
 
-Tested on a 10-page PDF with Qwen3 32B:
+Tested on a 10-page PDF with Qwen3.5 35B:
 
 | Operation | Time |
 |---|---|
@@ -154,4 +154,4 @@ Apache 2.0 — see [LICENSE](./LICENSE)
 
 [aiLab.ph](https://ailab.ph) — building software where bugs have dollar signs attached.
 
-`Powered by Qwen3 32B • No external APIs`
+`Powered by Qwen3.5 35B • No external APIs`

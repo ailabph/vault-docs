@@ -175,7 +175,7 @@ All values loaded from environment variables with sensible defaults:
 
 ```python
 OLLAMA_HOST       = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
-OLLAMA_MODEL      = os.getenv("OLLAMA_MODEL", "qwen3:32b")
+OLLAMA_MODEL      = os.getenv("OLLAMA_MODEL", "qwen3.5:35b")
 MAX_UPLOAD_MB     = int(os.getenv("MAX_UPLOAD_SIZE_MB", 50))
 MAX_WORDS_PROMPT  = int(os.getenv("MAX_WORDS_PROMPT", 8000))
 ```

@@ -92,7 +92,7 @@ Displayed after successful `/api/analyze` response.
 │  [chat history renders above input]    │
 │                                        │
 │  ─────────────────────────────────     │
-│  Powered by qwen3:32b • No external    │
+│  Powered by qwen3.5:35b • No external    │
 │  APIs          [Analyze another doc]   │
 └────────────────────────────────────────┘
 ```

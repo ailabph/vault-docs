@@ -49,7 +49,7 @@ The following phrases must appear in the interface:
 
 ### Deployment
 - Single command to start the VPS stack: `docker compose up`
-- Model pull is a **manual one-time bootstrap step** on the GPU server: `ollama pull qwen3:32b`
+- Model pull is a **manual one-time bootstrap step** on the GPU server: `ollama pull qwen3.5:35b`
 - The GPU server and SSH tunnel must be running before `docker compose up` is executed
 
 ### Compatibility
