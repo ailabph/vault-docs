@@ -6,7 +6,7 @@ import httpx
 
 from config import OLLAMA_HOST, OLLAMA_MODEL
 
-_TIMEOUT = 60.0
+_TIMEOUT = 300.0
 
 ANALYSIS_SYSTEM = "You are a document analysis assistant. Be concise and accurate."
 
