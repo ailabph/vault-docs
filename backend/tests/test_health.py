@@ -31,7 +31,7 @@ def test_health_ollama_reachable():
 
 
 def test_health_ollama_unreachable():
-    """Health endpoint returns 'unreachable' when Ollama is down."""
+    """Health endpoint returns 503 when Ollama is down (readiness check)."""
     with patch("main.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
@@ -41,7 +41,7 @@ def test_health_ollama_unreachable():
 
         resp = client.get("/api/health")
 
-    assert resp.status_code == 200
+    assert resp.status_code == 503
     data = resp.json()
-    assert data["status"] == "ok"
+    assert data["status"] == "degraded"
     assert data["ollama"] == "unreachable"

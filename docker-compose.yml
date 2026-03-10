@@ -1,8 +1,8 @@
 services:
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    # Port 8000 is internal only — not exposed to the host.
+    # Frontend (Nginx) proxies /api/* to backend:8000 internally.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:

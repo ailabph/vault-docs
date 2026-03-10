@@ -41,7 +41,10 @@ def extract_text(file: UploadFile) -> str:
 
 def _extract_pdf(content: bytes) -> str:
     """Extract text from PDF bytes using PyMuPDF."""
-    doc = fitz.open(stream=content, filetype="pdf")
+    try:
+        doc = fitz.open(stream=content, filetype="pdf")
+    except Exception as e:
+        raise ValueError(f"Could not open PDF: {e}") from e
     pages = []
     for page in doc:
         pages.append(page.get_text())
@@ -51,13 +54,19 @@ def _extract_pdf(content: bytes) -> str:
 
 def _extract_docx(content: bytes) -> str:
     """Extract text from DOCX bytes using python-docx."""
-    doc = Document(io.BytesIO(content))
+    try:
+        doc = Document(io.BytesIO(content))
+    except Exception as e:
+        raise ValueError(f"Could not open DOCX: {e}") from e
     return "\n".join(p.text for p in doc.paragraphs)
 
 
 def _extract_txt(content: bytes) -> str:
     """Decode TXT bytes to string."""
-    return content.decode("utf-8")
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise ValueError(f"Could not decode text file as UTF-8: {e}") from e
 
 
 def truncate(text: str, max_words: int = MAX_WORDS_PROMPT) -> str:

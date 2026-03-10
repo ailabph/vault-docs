@@ -150,6 +150,28 @@ class TestChat:
         assert result == "The document discusses testing."
 
 
+# --- Malformed Ollama response ---
+
+
+class TestMalformedOllamaResponse:
+    @pytest.mark.asyncio
+    async def test_missing_message_key_raises_value_error(self):
+        bad_response = httpx.Response(
+            200,
+            json={"unexpected": "structure"},
+            request=_DUMMY_REQUEST,
+        )
+        with patch("llm.httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=bad_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = mock_client
+
+            with pytest.raises(ValueError, match="Unexpected Ollama response format"):
+                await analyze("some text")
+
+
 # --- Timeout ---
 
 

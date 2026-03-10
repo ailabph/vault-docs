@@ -64,6 +64,25 @@ class TestTXTExtraction:
         upload.file.close()
 
 
+# --- Corrupt files ---
+
+class TestCorruptFiles:
+    def test_corrupt_pdf_raises_value_error(self):
+        upload = _make_upload_from_bytes(b"not a pdf", "corrupt.pdf")
+        with pytest.raises(ValueError, match="Could not open PDF"):
+            extract_text(upload)
+
+    def test_corrupt_docx_raises_value_error(self):
+        upload = _make_upload_from_bytes(b"not a docx", "corrupt.docx")
+        with pytest.raises(ValueError, match="Could not open DOCX"):
+            extract_text(upload)
+
+    def test_non_utf8_txt_raises_value_error(self):
+        upload = _make_upload_from_bytes(b"\xff\xfe bad bytes", "bad.txt")
+        with pytest.raises(ValueError, match="UTF-8"):
+            extract_text(upload)
+
+
 # --- Unsupported file type ---
 
 class TestUnsupportedType:

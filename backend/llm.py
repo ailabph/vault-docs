@@ -39,7 +39,10 @@ async def _call_ollama(messages: list[dict]) -> str:
             },
         )
         resp.raise_for_status()
-        return resp.json()["message"]["content"]
+        try:
+            return resp.json()["message"]["content"]
+        except (KeyError, ValueError) as e:
+            raise ValueError(f"Unexpected Ollama response format: {e}") from e
 
 
 def _parse_analysis(raw: str) -> dict:

@@ -99,6 +99,36 @@ class TestAnalyzeEndpoint:
 
         assert resp.status_code == 503
 
+    def test_corrupt_pdf_returns_400(self):
+        with patch("main.parser.extract_text", side_effect=ValueError("Could not open PDF: bad stream")):
+            resp = self._upload(b"not a pdf", "corrupt.pdf")
+
+        assert resp.status_code == 400
+        assert "error" in resp.json()
+
+    def test_corrupt_docx_returns_400(self):
+        with patch("main.parser.extract_text", side_effect=ValueError("Could not open DOCX: not a zip")):
+            resp = self._upload(b"not a docx", "corrupt.docx")
+
+        assert resp.status_code == 400
+        assert "error" in resp.json()
+
+    def test_non_utf8_txt_returns_400(self):
+        with patch("main.parser.extract_text", side_effect=ValueError("Could not decode text file as UTF-8")):
+            resp = self._upload(b"\xff\xfe", "bad.txt")
+
+        assert resp.status_code == 400
+        assert "error" in resp.json()
+
+    def test_malformed_ollama_response_returns_503(self):
+        with patch("main.parser.extract_text", return_value="doc text"):
+            with patch("main.llm.analyze", new_callable=AsyncMock,
+                       side_effect=ValueError("Unexpected Ollama response format")):
+                resp = self._upload(b"data", "test.txt")
+
+        assert resp.status_code == 503
+        assert "error" in resp.json()
+
     def test_no_stack_trace_in_400(self):
         with patch("main.parser.extract_text", side_effect=ValueError("bad file")):
             resp = self._upload(b"data", "bad.xyz")

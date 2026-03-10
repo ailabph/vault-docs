@@ -29,7 +29,11 @@ class ChatRequest(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    """Return backend status and Ollama reachability."""
+    """Return backend status and Ollama reachability.
+
+    Returns 200 only when Ollama is reachable (readiness check).
+    Returns 503 when Ollama is down so Docker HEALTHCHECK fails correctly.
+    """
     ollama_status = "unreachable"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -39,7 +43,13 @@ async def health():
     except Exception:
         pass
 
-    return {"status": "ok", "ollama": ollama_status}
+    if ollama_status == "unreachable":
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "ollama": "unreachable"},
+        )
+
+    return {"status": "ok", "ollama": "reachable"}
 
 
 @app.post("/api/analyze")
@@ -67,7 +77,7 @@ async def analyze(file: UploadFile = File(...)):
     # --- LLM analysis ---
     try:
         result = await llm.analyze(truncated)
-    except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError):
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError, ValueError):
         return JSONResponse(
             status_code=503,
             content={"error": "Document analysis service is temporarily unavailable. Please try again."},
@@ -102,7 +112,7 @@ async def chat(req: ChatRequest):
             history=sess["chat_history"],
             question=req.question,
         )
-    except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError):
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError, ValueError):
         return JSONResponse(
             status_code=503,
             content={"error": "Chat service is temporarily unavailable. Please try again."},
