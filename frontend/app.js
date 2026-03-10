@@ -181,6 +181,122 @@
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
+    // ── Streaming state for think/answer routing ────────────────
+    var streamState = {
+        thinking: false,
+        thinkingEl: null,
+        thinkingContentEl: null,
+        answerEl: null,
+        buffer: ''
+    };
+
+    function resetStreamState() {
+        streamState.thinking = false;
+        streamState.thinkingEl = null;
+        streamState.thinkingContentEl = null;
+        streamState.answerEl = null;
+        streamState.buffer = '';
+    }
+
+    function ensureThinkingBlock() {
+        if (streamState.thinkingEl) return;
+        var block = document.createElement('div');
+        block.className = 'thinking-block';
+
+        var label = document.createElement('div');
+        label.className = 'thinking-label';
+        label.textContent = '\u{1F9E0} Thinking\u2026';
+        block.appendChild(label);
+
+        var content = document.createElement('div');
+        content.className = 'thinking-content';
+        block.appendChild(content);
+
+        chatHistory.appendChild(block);
+        streamState.thinkingEl = block;
+        streamState.thinkingContentEl = content;
+    }
+
+    function ensureAnswerBubble() {
+        if (streamState.answerEl) return;
+        var div = document.createElement('div');
+        div.className = 'message message-assistant';
+        chatHistory.appendChild(div);
+        streamState.answerEl = div;
+    }
+
+    function appendStreamToken(token, done) {
+        streamState.buffer += token;
+
+        // --- Detect <think> open tag ---
+        var thinkOpen = streamState.buffer.indexOf('<think>');
+        if (thinkOpen !== -1 && !streamState.thinking && !streamState.thinkingEl) {
+            streamState.thinking = true;
+            ensureThinkingBlock();
+            // Remove <think> from buffer so it doesn't display
+            streamState.buffer = streamState.buffer.replace('<think>', '');
+            // Re-derive token without the tag for display
+            token = token.replace('<think>', '');
+        }
+
+        // --- Detect </think> close tag ---
+        var thinkClose = streamState.buffer.indexOf('</think>');
+        if (thinkClose !== -1 && streamState.thinking) {
+            streamState.thinking = false;
+            // Remove </think> from buffer
+            streamState.buffer = streamState.buffer.replace('</think>', '');
+            token = token.replace('</think>', '');
+
+            // Flush remaining token text into thinking block before collapsing
+            if (token && streamState.thinkingContentEl) {
+                streamState.thinkingContentEl.textContent += token;
+                token = ''; // consumed
+            }
+
+            // Collapse thinking block
+            if (streamState.thinkingEl) {
+                streamState.thinkingEl.classList.add('collapsed');
+                // Update label to indicate it's expandable
+                var label = streamState.thinkingEl.querySelector('.thinking-label');
+                if (label) {
+                    label.textContent = '\u{1F9E0} Thinking (click to expand)';
+                }
+            }
+
+            // Create answer bubble for upcoming answer tokens
+            ensureAnswerBubble();
+
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            return;
+        }
+
+        // --- Route token to the correct element ---
+        if (token) {
+            if (streamState.thinking) {
+                ensureThinkingBlock();
+                streamState.thinkingContentEl.textContent += token;
+            } else {
+                ensureAnswerBubble();
+                streamState.answerEl.textContent += token;
+            }
+        }
+
+        // --- Finalize on done ---
+        if (done) {
+            // Edge case: if no answer bubble was created, create one with
+            // accumulated non-thinking text
+            if (!streamState.answerEl) {
+                ensureAnswerBubble();
+                // buffer has accumulated text minus think tags
+                // answerEl was just created empty — leave it (content already
+                // routed token-by-token above, or buffer is all thinking text)
+            }
+            resetStreamState();
+        }
+
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
     async function sendChatMessage() {
         var question = questionInput.value.trim();
         if (!question) {
@@ -191,7 +307,7 @@
         appendMessage('user', question);
         questionInput.value = '';
 
-        // Disable input during request
+        // Disable input during streaming
         questionInput.disabled = true;
         sendBtn.disabled = true;
 
@@ -205,22 +321,88 @@
                 })
             });
 
-            if (response.ok) {
-                var data = await response.json();
-                appendMessage('assistant', data.answer);
-            } else if (response.status === 404) {
-                appendMessage('error', 'Session expired \u2014 please re-upload your document.');
-            } else {
-                appendMessage('error', 'Inference service unavailable. Please try again.');
+            // Non-OK status → handle as before (JSON error)
+            if (!response.ok) {
+                if (response.status === 404) {
+                    appendMessage('error', 'Session expired \u2014 please re-upload your document.');
+                } else {
+                    appendMessage('error', 'Inference service unavailable. Please try again.');
+                }
+                return;
+            }
+
+            // OK → read SSE stream
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var sseBuffer = '';
+
+            while (true) {
+                var result = await reader.read();
+                if (result.done) break;
+
+                sseBuffer += decoder.decode(result.value, { stream: true });
+
+                // Split on double-newline (SSE event boundary)
+                var events = sseBuffer.split('\n\n');
+                // Last element may be incomplete — keep it in buffer
+                sseBuffer = events.pop();
+
+                for (var i = 0; i < events.length; i++) {
+                    var eventText = events[i].trim();
+                    if (!eventText) continue;
+
+                    // Strip "data: " prefix
+                    if (eventText.indexOf('data: ') === 0) {
+                        eventText = eventText.substring(6);
+                    }
+
+                    var parsed;
+                    try {
+                        parsed = JSON.parse(eventText);
+                    } catch (e) {
+                        continue; // skip unparseable lines
+                    }
+
+                    if (parsed.error) {
+                        appendMessage('error', parsed.error);
+                        resetStreamState();
+                        return;
+                    }
+
+                    if ('token' in parsed) {
+                        appendStreamToken(parsed.token, parsed.done);
+                        if (parsed.done) return;
+                    }
+                }
             }
         } catch (err) {
             appendMessage('error', 'Inference service unavailable. Please try again.');
+            resetStreamState();
         } finally {
             questionInput.disabled = false;
             sendBtn.disabled = false;
             questionInput.focus();
         }
     }
+
+    // ── Thinking block expand/collapse on click ─────────────────
+    chatHistory.addEventListener('click', function (e) {
+        var block = e.target.closest('.thinking-block');
+        if (block && block.classList.contains('collapsed')) {
+            block.classList.remove('collapsed');
+            var label = block.querySelector('.thinking-label');
+            if (label) {
+                label.textContent = '\u{1F9E0} Thinking (click to collapse)';
+            }
+        } else if (block && !block.classList.contains('collapsed')) {
+            // Allow re-collapsing too
+            block.classList.add('collapsed');
+            var label2 = block.querySelector('.thinking-label');
+            if (label2) {
+                label2.textContent = '\u{1F9E0} Thinking (click to expand)';
+            }
+        }
+    });
 
     // ── Reset ────────────────────────────────────────────────────
 
@@ -230,6 +412,7 @@
         document.getElementById('key-points').innerHTML = '';
         document.getElementById('summary').textContent = '';
         fileInput.value = '';
+        resetStreamState();
         showUpload();
     }
 

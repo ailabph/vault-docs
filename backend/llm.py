@@ -1,6 +1,8 @@
 """Ollama LLM client — prompt building and inference calls."""
 
+import json
 import re
+from collections.abc import AsyncGenerator
 
 import httpx
 
@@ -104,3 +106,32 @@ async def chat(context: str, history: list[dict], question: str) -> str:
     """Send a chat question with document context and history. Returns answer string."""
     messages = _build_chat_messages(context, history, question)
     return await _call_ollama(messages)
+
+
+async def chat_stream(
+    context: str, history: list[dict], question: str
+) -> AsyncGenerator[tuple[str, bool], None]:
+    """Stream chat tokens from Ollama. Yields (token, done) tuples.
+
+    Raises httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError
+    on failure — caller is responsible for handling.
+    """
+    messages = _build_chat_messages(context, history, question)
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        async with client.stream(
+            "POST",
+            f"{OLLAMA_HOST}/api/chat",
+            json={
+                "model": OLLAMA_MODEL,
+                "messages": messages,
+                "stream": True,
+            },
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                chunk = json.loads(line)
+                token = chunk.get("message", {}).get("content", "")
+                done = chunk.get("done", False)
+                yield (token, done)

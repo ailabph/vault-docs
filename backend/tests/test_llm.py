@@ -1,11 +1,13 @@
 """Tests for llm.py — Ollama client, prompt building, response parsing."""
 
-from unittest.mock import AsyncMock, patch
+import json
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
-from llm import _build_chat_messages, _parse_analysis, analyze, chat
+from llm import _build_chat_messages, _parse_analysis, analyze, chat, chat_stream
 
 _DUMMY_REQUEST = httpx.Request("POST", "http://localhost/api/chat")
 
@@ -203,3 +205,103 @@ class TestTimeout:
 
             with pytest.raises(httpx.TimeoutException):
                 await chat("ctx", [], "question")
+
+
+# --- chat_stream() ---
+
+
+def _make_ndjson_lines(tokens: list[str]) -> list[str]:
+    """Build NDJSON lines simulating Ollama streaming response."""
+    lines = []
+    for i, tok in enumerate(tokens):
+        is_last = i == len(tokens) - 1
+        chunk = {"message": {"role": "assistant", "content": tok}, "done": is_last}
+        lines.append(json.dumps(chunk))
+    return lines
+
+
+class _FakeStreamResponse:
+    """Mock httpx streaming response with aiter_lines()."""
+
+    def __init__(self, lines: list[str], status_code: int = 200):
+        self.status_code = status_code
+        self._lines = lines
+        self.request = _DUMMY_REQUEST
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise httpx.HTTPStatusError(
+                "error", request=self.request,
+                response=httpx.Response(self.status_code, request=self.request),
+            )
+
+    async def aiter_lines(self):
+        for line in self._lines:
+            yield line
+
+
+class TestChatStream:
+    @pytest.mark.asyncio
+    async def test_yields_tokens(self):
+        tokens = ["Hello", " world", "!"]
+        lines = _make_ndjson_lines(tokens)
+        fake_resp = _FakeStreamResponse(lines)
+
+        with patch("llm.httpx.AsyncClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.stream = MagicMock(return_value=_async_cm(fake_resp))
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = mock_client
+
+            collected = []
+            async for token, done in chat_stream("ctx", [], "q"):
+                collected.append((token, done))
+
+        assert len(collected) == 3
+        assert collected[0] == ("Hello", False)
+        assert collected[1] == (" world", False)
+        assert collected[2] == ("!", True)
+
+    @pytest.mark.asyncio
+    async def test_raises_on_timeout(self):
+        with patch("llm.httpx.AsyncClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.stream = MagicMock(
+                return_value=_async_cm_raise(httpx.TimeoutException("timed out"))
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = mock_client
+
+            with pytest.raises(httpx.TimeoutException):
+                async for _ in chat_stream("ctx", [], "q"):
+                    pass
+
+    @pytest.mark.asyncio
+    async def test_raises_on_connect_error(self):
+        with patch("llm.httpx.AsyncClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.stream = MagicMock(
+                return_value=_async_cm_raise(httpx.ConnectError("refused"))
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = mock_client
+
+            with pytest.raises(httpx.ConnectError):
+                async for _ in chat_stream("ctx", [], "q"):
+                    pass
+
+
+@asynccontextmanager
+async def _async_cm(value):
+    """Async context manager that yields a value."""
+    yield value
+
+
+@asynccontextmanager
+async def _async_cm_raise(exc):
+    """Async context manager that raises on entry."""
+    raise exc
+    yield  # noqa: unreachable — needed for generator syntax

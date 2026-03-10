@@ -313,6 +313,37 @@ html, body {
     color: var(--error);
 }
 
+/* ── Thinking Block (streaming) ───────────────────────────────── */
+.thinking-block {
+    align-self: flex-start;
+    max-width: 80%;
+    padding: 0.75rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.thinking-block.collapsed {
+    max-height: 2rem;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.thinking-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+    font-style: normal;
+}
+
 /* ── Results Footer ────────────────────────────────────────────── */
 .results-footer {
     display: flex;
@@ -370,6 +401,10 @@ html, body {
     }
 
     .message {
+        max-width: 90%;
+    }
+
+    .thinking-block {
         max-width: 90%;
     }
 }

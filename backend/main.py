@@ -1,9 +1,11 @@
 """FastAPI application — vault-docs backend."""
 
+import json
+
 import httpx
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 import llm
@@ -95,8 +97,8 @@ async def analyze(file: UploadFile = File(...)):
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    """Ask a follow-up question about an analyzed document."""
-    # --- session lookup ---
+    """Ask a follow-up question about an analyzed document (SSE streaming)."""
+    # --- session lookup (before streaming starts → normal JSON error) ---
     try:
         sess = session.get_session(req.session_id)
     except KeyError:
@@ -105,21 +107,32 @@ async def chat(req: ChatRequest):
             content={"error": "Session not found. Please upload a document first."},
         )
 
-    # --- LLM chat ---
-    try:
-        answer = await llm.chat(
-            context=sess["document_text"],
-            history=sess["chat_history"],
-            question=req.question,
-        )
-    except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError, ValueError):
-        return JSONResponse(
-            status_code=503,
-            content={"error": "Chat service is temporarily unavailable. Please try again."},
-        )
+    async def event_stream():
+        full_answer: list[str] = []
+        try:
+            async for token, done in llm.chat_stream(
+                context=sess["document_text"],
+                history=sess["chat_history"],
+                question=req.question,
+            ):
+                full_answer.append(token)
+                payload = json.dumps({"token": token, "done": done})
+                yield f"data: {payload}\n\n"
+                if done:
+                    break
+        except (
+            httpx.TimeoutException,
+            httpx.ConnectError,
+            httpx.HTTPStatusError,
+            ValueError,
+        ):
+            error_payload = json.dumps({"error": "Service unavailable"})
+            yield f"data: {error_payload}\n\n"
+            return
 
-    # --- persist both turns ---
-    session.append_message(req.session_id, "user", req.question)
-    session.append_message(req.session_id, "assistant", answer)
+        # Persist both turns after stream completes
+        assembled = "".join(full_answer)
+        session.append_message(req.session_id, "user", req.question)
+        session.append_message(req.session_id, "assistant", assembled)
 
-    return {"answer": answer}
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

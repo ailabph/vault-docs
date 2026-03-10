@@ -1,6 +1,7 @@
 """Tests for API endpoints — POST /api/analyze and POST /api/chat."""
 
 import io
+import json
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -143,20 +144,47 @@ class TestAnalyzeEndpoint:
 # ---------------------------------------------------------------------------
 
 
+def _parse_sse_events(resp) -> list[dict]:
+    """Parse SSE response body into a list of JSON event dicts."""
+    events = []
+    body = resp.text
+    for chunk in body.split("\n\n"):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if chunk.startswith("data: "):
+            chunk = chunk[6:]
+        events.append(json.loads(chunk))
+    return events
+
+
+async def _fake_chat_stream(tokens):
+    """Create a mock async generator that yields (token, done) tuples."""
+    for i, tok in enumerate(tokens):
+        is_last = i == len(tokens) - 1
+        yield (tok, is_last)
+
+
 class TestChatEndpoint:
     def _create_session_with_doc(self, doc_text: str = "Document content.") -> str:
         """Helper: manually create a session and return its ID."""
         from session import create_session
         return create_session(doc_text)
 
-    @patch("main.llm.chat", new_callable=AsyncMock, return_value="The answer is 42.")
-    def test_success_returns_answer(self, mock_chat):
+    def test_success_returns_streamed_answer(self):
         sid = self._create_session_with_doc()
+        tokens = ["The ", "answer ", "is 42."]
 
-        resp = client.post("/api/chat", json={"session_id": sid, "question": "What is the answer?"})
+        with patch("main.llm.chat_stream", return_value=_fake_chat_stream(tokens)):
+            resp = client.post("/api/chat", json={"session_id": sid, "question": "What?"})
 
         assert resp.status_code == 200
-        assert resp.json()["answer"] == "The answer is 42."
+        assert resp.headers["content-type"].startswith("text/event-stream")
+        events = _parse_sse_events(resp)
+        assert len(events) == 3
+        assert events[0] == {"token": "The ", "done": False}
+        assert events[1] == {"token": "answer ", "done": False}
+        assert events[2] == {"token": "is 42.", "done": True}
 
     def test_unknown_session_returns_404(self):
         resp = client.post("/api/chat", json={"session_id": "nonexistent", "question": "Hi"})
@@ -164,44 +192,60 @@ class TestChatEndpoint:
         assert resp.status_code == 404
         assert "error" in resp.json()
 
-    @patch("main.llm.chat", new_callable=AsyncMock, return_value="Response 1")
-    def test_appends_both_turns_to_history(self, mock_chat):
+    def test_appends_both_turns_to_history(self):
         sid = self._create_session_with_doc()
+        tokens = ["Response ", "1"]
 
-        client.post("/api/chat", json={"session_id": sid, "question": "Q1"})
+        with patch("main.llm.chat_stream", return_value=_fake_chat_stream(tokens)):
+            client.post("/api/chat", json={"session_id": sid, "question": "Q1"})
 
         history = _store[sid]["chat_history"]
         assert len(history) == 2
         assert history[0] == {"role": "user", "content": "Q1"}
         assert history[1] == {"role": "assistant", "content": "Response 1"}
 
-    @patch("main.llm.chat", new_callable=AsyncMock)
-    def test_multi_turn_grows_history(self, mock_chat):
-        mock_chat.side_effect = ["A1", "A2"]
+    def test_multi_turn_grows_history(self):
         sid = self._create_session_with_doc()
 
-        client.post("/api/chat", json={"session_id": sid, "question": "Q1"})
-        client.post("/api/chat", json={"session_id": sid, "question": "Q2"})
+        with patch("main.llm.chat_stream", return_value=_fake_chat_stream(["A1"])):
+            client.post("/api/chat", json={"session_id": sid, "question": "Q1"})
+
+        with patch("main.llm.chat_stream", return_value=_fake_chat_stream(["A2"])):
+            client.post("/api/chat", json={"session_id": sid, "question": "Q2"})
 
         history = _store[sid]["chat_history"]
         assert len(history) == 4  # Q1, A1, Q2, A2
 
-    @patch("main.llm.chat", new_callable=AsyncMock, side_effect=httpx.ConnectError("refused"))
-    def test_ollama_down_returns_503(self, mock_chat):
+    def test_ollama_down_returns_sse_error(self):
         sid = self._create_session_with_doc()
 
-        resp = client.post("/api/chat", json={"session_id": sid, "question": "Hi"})
+        async def _raise_connect(*args, **kwargs):
+            raise httpx.ConnectError("refused")
+            yield  # noqa: unreachable — needed for async generator syntax
 
-        assert resp.status_code == 503
-        assert "error" in resp.json()
+        with patch("main.llm.chat_stream", return_value=_raise_connect()):
+            resp = client.post("/api/chat", json={"session_id": sid, "question": "Hi"})
 
-    @patch("main.llm.chat", new_callable=AsyncMock, side_effect=httpx.TimeoutException("timeout"))
-    def test_ollama_timeout_returns_503(self, mock_chat):
+        assert resp.status_code == 200  # SSE stream always starts 200
+        events = _parse_sse_events(resp)
+        assert len(events) == 1
+        assert "error" in events[0]
+        assert "unavailable" in events[0]["error"].lower()
+
+    def test_ollama_timeout_returns_sse_error(self):
         sid = self._create_session_with_doc()
 
-        resp = client.post("/api/chat", json={"session_id": sid, "question": "Hi"})
+        async def _raise_timeout(*args, **kwargs):
+            raise httpx.TimeoutException("timeout")
+            yield  # noqa: unreachable
 
-        assert resp.status_code == 503
+        with patch("main.llm.chat_stream", return_value=_raise_timeout()):
+            resp = client.post("/api/chat", json={"session_id": sid, "question": "Hi"})
+
+        assert resp.status_code == 200  # SSE stream always starts 200
+        events = _parse_sse_events(resp)
+        assert len(events) == 1
+        assert "error" in events[0]
 
     def test_no_stack_trace_in_404(self):
         resp = client.post("/api/chat", json={"session_id": "bad", "question": "Hi"})
