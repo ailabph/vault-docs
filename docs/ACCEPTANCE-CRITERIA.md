@@ -7,7 +7,7 @@ These are the conditions that must be true for vault-docs to be considered compl
 ## Deployment
 
 - [ ] `docker compose up` starts the full stack from a cold state with a single command
-- [ ] The application is accessible at the VPS public IP/domain on port `3000` after startup
+- [ ] The application is accessible at the VPS public IP/domain (port `3000` direct, or `:443` behind TLS proxy)
 - [ ] `ollama pull qwen3.5:35b` has been run manually on the GPU server prior to deployment (one-time bootstrap)
 - [ ] SSH tunnel to GPU server is established before `docker compose up` (see `docs/INFRASTRUCTURE.md`)
 - [ ] TLS is terminated at a host-level reverse proxy for production (see `docs/INFRASTRUCTURE.md` TLS section)

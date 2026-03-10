@@ -63,14 +63,14 @@ User Browser
   │      │ /api/*               │
   │      ▼                      │
   │  backend (FastAPI) :8000    │
-  │      │ localhost:11434      │
+  │      │ host.docker.internal:11434  │
   │      ▼                      │
   │  SSH Tunnel ─────────────────────────► GPU Server
   │  (port forward)             │          Ollama :11434
   └─────────────────────────────┘          Qwen3.5 35B
 ```
 
-The backend always calls `http://localhost:11434` — it has no knowledge of the GPU server's IP. The tunnel makes the remote Ollama appear local.
+The backend container calls `http://host.docker.internal:11434` (resolved via `extra_hosts: host-gateway` in `docker-compose.yml`). This reaches the SSH tunnel bound on the VPS host's `localhost:11434`. The backend has no knowledge of the GPU server's IP — the tunnel makes the remote Ollama appear local to the VPS host.
 
 ---
 
