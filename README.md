@@ -84,12 +84,12 @@ No data reaches a cloud provider or third-party service. Document text travels f
 
 ## Configuration
 
-Edit `docker-compose.yml` to change the model or port:
+Edit `.env` (or `docker-compose.yml` environment) to change the model. Edit `APP_PORT` in `.env` to change the public port:
 
-```yaml
-environment:
-  - OLLAMA_MODEL=qwen3.5:35b     # swap for any model you have pulled
-  - APP_PORT=3000
+```bash
+# .env
+OLLAMA_MODEL=qwen3.5:35b     # swap for any model you have pulled
+APP_PORT=3000                 # public frontend port (used in ports: mapping)
 ```
 
 To use a different model:

@@ -31,7 +31,7 @@ The following phrases must appear in the interface:
 - "Your document never leaves our private infrastructure"
 - "100% privately hosted — no cloud, no third parties"
 - "Zero cloud dependencies"
-- "Powered by [model name] • No external APIs"
+- "Powered by [model name] - No external APIs"
 
 ---
 
@@ -64,7 +64,7 @@ The following phrases must appear in the interface:
 | Concern | Decision |
 |---|---|
 | LLM Inference | Ollama |
-| Default Model | Qwen3 32B |
+| Default Model | Qwen3.5 35B |
 | Backend | FastAPI (Python) |
 | PDF Parsing | PyMuPDF (`fitz`) |
 | DOCX Parsing | python-docx |

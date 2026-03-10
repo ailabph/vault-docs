@@ -27,7 +27,7 @@ Get the skeleton running. All services up, talking to each other, with no applic
 
 **GPU Server (one-time bootstrap)**
 - [ ] Confirm Ollama is installed and running on GPU server
-- [ ] Run `ollama pull qwen3:32b` — wait for model download to complete
+- [ ] Run `ollama pull qwen3.5:35b` — wait for model download to complete
 - [ ] Verify: `curl localhost:11434/api/tags` returns the model
 
 **VPS Setup**

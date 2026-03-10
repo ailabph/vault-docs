@@ -52,11 +52,14 @@ DigitalOcean, Hetzner, Linode, Vultr. A $6–12/month instance covers the minimu
 
 ```
 User Browser
-     │  HTTPS
+     │  HTTPS (TLS terminated at host-level reverse proxy)
      ▼
-  VPS (:3000)
+  VPS
   ┌─────────────────────────────┐
-  │  frontend (Nginx)           │
+  │  Caddy/Nginx (host) :443    │  ← TLS termination (see TLS section)
+  │      │ HTTP                  │
+  │      ▼                      │
+  │  frontend (Nginx) :3000     │  ← app container, HTTP only
   │      │ /api/*               │
   │      ▼                      │
   │  backend (FastAPI) :8000    │
@@ -189,3 +192,36 @@ ollama pull qwen3.5:35b
 3. `docker compose up` on VPS
 
 The backend will fail requests (503) if the tunnel is down — it does not queue or retry. The tunnel must be established before the app serves traffic.
+
+---
+
+## TLS Termination
+
+The application containers serve HTTP only. For production deployment, TLS must be terminated **in front of** the frontend container — not inside it.
+
+### Recommended approach
+
+Use Caddy or Certbot + Nginx as a host-level reverse proxy:
+
+```
+Browser ──HTTPS──► Caddy/Nginx (host) ──HTTP──► frontend container (:3000)
+```
+
+#### Caddy (auto-TLS, simplest)
+
+```
+# /etc/caddy/Caddyfile
+yourdomain.com {
+    reverse_proxy localhost:3000
+}
+```
+
+Caddy handles certificate provisioning and renewal automatically via Let's Encrypt.
+
+#### Certbot + Nginx (manual setup)
+
+Install Certbot on the VPS host, obtain a certificate for your domain, and configure a host-level Nginx site to proxy to `localhost:3000` with `ssl_certificate` and `ssl_certificate_key` directives.
+
+### Why not inside the container?
+
+The app container runs `nginx:alpine` serving static files and proxying `/api/*`. Adding TLS inside the container would couple certificate management to the application lifecycle and complicate `docker compose up`. A host-level reverse proxy keeps concerns separated and allows certificate renewal without restarting the stack.
