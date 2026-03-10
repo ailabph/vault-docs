@@ -247,6 +247,40 @@ class TestChatEndpoint:
         assert len(events) == 1
         assert "error" in events[0]
 
+    def test_think_tags_stripped_from_history(self):
+        sid = self._create_session_with_doc()
+        tokens = ["<think>", "internal reasoning", "</think>", "The answer."]
+
+        with patch("main.llm.chat_stream", return_value=_fake_chat_stream(tokens)):
+            client.post("/api/chat", json={"session_id": sid, "question": "Q1"})
+
+        history = _store[sid]["chat_history"]
+        assert len(history) == 2
+        assert history[1]["role"] == "assistant"
+        assert "<think>" not in history[1]["content"]
+        assert "internal reasoning" not in history[1]["content"]
+        assert history[1]["content"] == "The answer."
+
+    def test_think_tags_stripped_multiline(self):
+        sid = self._create_session_with_doc()
+        tokens = ["<think>line1\nline2\nline3</think>", "Final answer."]
+
+        with patch("main.llm.chat_stream", return_value=_fake_chat_stream(tokens)):
+            client.post("/api/chat", json={"session_id": sid, "question": "Q1"})
+
+        history = _store[sid]["chat_history"]
+        assert history[1]["content"] == "Final answer."
+
+    def test_no_think_tags_preserves_full_answer(self):
+        sid = self._create_session_with_doc()
+        tokens = ["No thinking ", "here."]
+
+        with patch("main.llm.chat_stream", return_value=_fake_chat_stream(tokens)):
+            client.post("/api/chat", json={"session_id": sid, "question": "Q1"})
+
+        history = _store[sid]["chat_history"]
+        assert history[1]["content"] == "No thinking here."
+
     def test_no_stack_trace_in_404(self):
         resp = client.post("/api/chat", json={"session_id": "bad", "question": "Hi"})
 

@@ -1,6 +1,7 @@
 """FastAPI application — vault-docs backend."""
 
 import json
+import re
 
 import httpx
 from fastapi import FastAPI, File, UploadFile
@@ -130,9 +131,11 @@ async def chat(req: ChatRequest):
             yield f"data: {error_payload}\n\n"
             return
 
-        # Persist both turns after stream completes
+        # Persist both turns after stream completes — strip <think> blocks
+        # so internal reasoning is not resent to the model on follow-up turns
         assembled = "".join(full_answer)
+        cleaned = re.sub(r"<think>.*?</think>", "", assembled, flags=re.DOTALL).strip()
         session.append_message(req.session_id, "user", req.question)
-        session.append_message(req.session_id, "assistant", assembled)
+        session.append_message(req.session_id, "assistant", cleaned)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

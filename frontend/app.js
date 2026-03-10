@@ -225,76 +225,134 @@
         streamState.answerEl = div;
     }
 
+    /**
+     * Process a streamed token, routing text to thinking-block or answer-bubble.
+     *
+     * Handles <think>/<\/think> tags that may be split across arbitrary chunk
+     * boundaries by buffering potential partial tags and only emitting text
+     * once we know it's safe.
+     */
     function appendStreamToken(token, done) {
+        // Append new token to the pending buffer
         streamState.buffer += token;
 
-        // --- Detect <think> open tag ---
-        var thinkOpen = streamState.buffer.indexOf('<think>');
-        if (thinkOpen !== -1 && !streamState.thinking && !streamState.thinkingEl) {
-            streamState.thinking = true;
-            ensureThinkingBlock();
-            // Remove <think> from buffer so it doesn't display
-            streamState.buffer = streamState.buffer.replace('<think>', '');
-            // Re-derive token without the tag for display
-            token = token.replace('<think>', '');
-        }
-
-        // --- Detect </think> close tag ---
-        var thinkClose = streamState.buffer.indexOf('</think>');
-        if (thinkClose !== -1 && streamState.thinking) {
-            streamState.thinking = false;
-            // Remove </think> from buffer
-            streamState.buffer = streamState.buffer.replace('</think>', '');
-            token = token.replace('</think>', '');
-
-            // Flush remaining token text into thinking block before collapsing
-            if (token && streamState.thinkingContentEl) {
-                streamState.thinkingContentEl.textContent += token;
-                token = ''; // consumed
-            }
-
-            // Collapse thinking block
-            if (streamState.thinkingEl) {
-                streamState.thinkingEl.classList.add('collapsed');
-                // Update label to indicate it's expandable
-                var label = streamState.thinkingEl.querySelector('.thinking-label');
-                if (label) {
-                    label.textContent = '\u{1F9E0} Thinking (click to expand)';
-                }
-            }
-
-            // Create answer bubble for upcoming answer tokens
-            ensureAnswerBubble();
-
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-            return;
-        }
-
-        // --- Route token to the correct element ---
-        if (token) {
-            if (streamState.thinking) {
-                ensureThinkingBlock();
-                streamState.thinkingContentEl.textContent += token;
-            } else {
-                ensureAnswerBubble();
-                streamState.answerEl.textContent += token;
-            }
-        }
+        // Drain as much safe text from the buffer as possible
+        drainBuffer();
 
         // --- Finalize on done ---
         if (done) {
-            // Edge case: if no answer bubble was created, create one with
-            // accumulated non-thinking text
+            // Flush whatever remains in the buffer as-is (incomplete tag = literal text)
+            flushBufferRemainder();
             if (!streamState.answerEl) {
                 ensureAnswerBubble();
-                // buffer has accumulated text minus think tags
-                // answerEl was just created empty — leave it (content already
-                // routed token-by-token above, or buffer is all thinking text)
             }
             resetStreamState();
         }
 
         chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    /**
+     * Drain the buffer, emitting safe text and handling complete tags.
+     * Leaves any potential partial-tag suffix in the buffer for the next token.
+     */
+    function drainBuffer() {
+        // Keep looping while we can make progress
+        while (streamState.buffer.length > 0) {
+            if (streamState.thinking) {
+                // Inside <think> — look for </think>
+                var closeIdx = streamState.buffer.indexOf('</think>');
+                if (closeIdx !== -1) {
+                    // Emit text before the tag into thinking block
+                    var before = streamState.buffer.substring(0, closeIdx);
+                    if (before) {
+                        ensureThinkingBlock();
+                        streamState.thinkingContentEl.textContent += before;
+                    }
+                    // Consume the tag
+                    streamState.buffer = streamState.buffer.substring(closeIdx + 8);
+                    streamState.thinking = false;
+                    collapseThinkingBlock();
+                    ensureAnswerBubble();
+                    continue; // keep draining — there may be answer text after
+                }
+                // No complete </think> yet — check for partial tag at end
+                var safeLen = safeEmitLength(streamState.buffer, '</think>');
+                if (safeLen > 0) {
+                    ensureThinkingBlock();
+                    streamState.thinkingContentEl.textContent += streamState.buffer.substring(0, safeLen);
+                    streamState.buffer = streamState.buffer.substring(safeLen);
+                }
+                break; // rest of buffer might be partial tag — wait for more
+            } else {
+                // Outside <think> — look for <think>
+                var openIdx = streamState.buffer.indexOf('<think>');
+                if (openIdx !== -1) {
+                    // Emit text before the tag into answer bubble
+                    var beforeOpen = streamState.buffer.substring(0, openIdx);
+                    if (beforeOpen) {
+                        ensureAnswerBubble();
+                        streamState.answerEl.textContent += beforeOpen;
+                    }
+                    // Consume the tag
+                    streamState.buffer = streamState.buffer.substring(openIdx + 7);
+                    streamState.thinking = true;
+                    ensureThinkingBlock();
+                    continue; // keep draining — thinking text follows
+                }
+                // No complete <think> yet — check for partial tag at end
+                var safeAnswerLen = safeEmitLength(streamState.buffer, '<think>');
+                if (safeAnswerLen > 0) {
+                    ensureAnswerBubble();
+                    streamState.answerEl.textContent += streamState.buffer.substring(0, safeAnswerLen);
+                    streamState.buffer = streamState.buffer.substring(safeAnswerLen);
+                }
+                break; // rest might be partial — wait
+            }
+        }
+    }
+
+    /**
+     * Return how many leading characters of `buf` are safe to emit, given that
+     * `tag` might be arriving split across chunks. Any suffix of `buf` that
+     * matches a prefix of `tag` must be held back.
+     */
+    function safeEmitLength(buf, tag) {
+        var holdBack = 0;
+        // Check increasingly long suffixes of buf against prefixes of tag
+        var maxCheck = Math.min(buf.length, tag.length - 1);
+        for (var i = 1; i <= maxCheck; i++) {
+            if (buf.substring(buf.length - i) === tag.substring(0, i)) {
+                holdBack = i;
+            }
+        }
+        return buf.length - holdBack;
+    }
+
+    /**
+     * Flush any remaining buffer text as literal output (called on stream end).
+     */
+    function flushBufferRemainder() {
+        if (!streamState.buffer) return;
+        if (streamState.thinking) {
+            ensureThinkingBlock();
+            streamState.thinkingContentEl.textContent += streamState.buffer;
+            collapseThinkingBlock();
+        } else {
+            ensureAnswerBubble();
+            streamState.answerEl.textContent += streamState.buffer;
+        }
+        streamState.buffer = '';
+    }
+
+    function collapseThinkingBlock() {
+        if (streamState.thinkingEl) {
+            streamState.thinkingEl.classList.add('collapsed');
+            var label = streamState.thinkingEl.querySelector('.thinking-label');
+            if (label) {
+                label.textContent = '\u{1F9E0} Thinking (click to expand)';
+            }
+        }
     }
 
     async function sendChatMessage() {
