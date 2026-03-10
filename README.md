@@ -2,18 +2,18 @@
 
 **Air-Gapped Document Analyzer**
 
-Upload a document. Get a summary, key points, and a chat interface to ask questions about it. No data ever leaves your machine.
+Upload a document. Get a summary, key points, and a chat interface to ask questions about it. No data ever reaches a cloud provider or third-party service.
 
-> "This document never leaves your system." — 100% locally hosted. Zero cloud dependencies.
+> "Your document never leaves our private infrastructure." — No cloud. No third parties. Zero external API calls.
 
 ---
 
 ## What It Does
 
 1. **Upload** — Drag and drop a PDF, TXT, or DOCX
-2. **Analyze** — A local LLM extracts text, generates a 3–5 sentence summary, and pulls key points
+2. **Analyze** — A privately hosted LLM (qwen3.5:35b) extracts text, generates a 3–5 sentence summary, and pulls key points
 3. **Ask** — Chat with the document using a built-in Q&A interface
-4. **Trust** — Every step runs on your hardware. No external API calls. No telemetry.
+4. **Trust** — Processed entirely on private infrastructure. No cloud APIs. No telemetry.
 
 This is the first release in aiLab.ph's **Weekly Proof of Product** series — open-source tools that demonstrate sovereign AI is real, production-ready, and available today.
 
@@ -74,7 +74,7 @@ User uploads document
         │
         ▼
    Web Interface
-   (stays on your machine)
+   (private infrastructure only)
 ```
 
 No data reaches a cloud provider or third-party service. Document text travels from your browser to a privately hosted VPS, then to a privately owned GPU server via encrypted SSH tunnel. Nothing touches a public cloud.
