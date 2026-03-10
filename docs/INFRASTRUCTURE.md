@@ -131,24 +131,19 @@ vault-docs (VPS)
 
 Ollama is **not** in the VPS Docker Compose. It runs on the GPU server.
 
-The backend container must be able to reach `host.docker.internal:11434` (or use `network_mode: host`) to access the SSH tunnel on the VPS host.
+The backend container reaches the SSH tunnel on the VPS host via `host.docker.internal`. This keeps the container isolated while making the routing explicit in `docker-compose.yml`.
 
 ### Docker Compose — backend network access to tunnel
 
-Option A — host network mode (simplest):
-```yaml
-backend:
-  network_mode: host
-```
-
-Option B — extra_hosts:
 ```yaml
 backend:
   extra_hosts:
     - "host.docker.internal:host-gateway"
-environment:
-  - OLLAMA_HOST=http://host.docker.internal:11434
+  environment:
+    - OLLAMA_HOST=http://host.docker.internal:11434
 ```
+
+`host-gateway` resolves to the Docker host's IP, so `host.docker.internal:11434` reaches the SSH tunnel bound on the VPS host. No `network_mode: host` required.
 
 ---
 
@@ -178,7 +173,7 @@ ollama pull qwen3:32b
 | Variable | Value | Description |
 |---|---|---|
 | `OLLAMA_MODEL` | `qwen3:32b` | Model name |
-| `OLLAMA_HOST` | `http://localhost:11434` | Tunneled Ollama endpoint |
+| `OLLAMA_HOST` | `http://host.docker.internal:11434` | Tunneled Ollama endpoint (via extra_hosts) |
 | `APP_PORT` | `3000` | Public frontend port |
 | `MAX_UPLOAD_SIZE_MB` | `50` | Max upload size |
 

@@ -44,12 +44,13 @@ The following phrases must appear in the interface:
 ### Data Sovereignty
 - Zero outbound network requests during document processing
 - No document content persisted to disk beyond the active request lifecycle
-- Ollama inference endpoint must be internal (Docker network or localhost only)
+- Ollama inference endpoint reached via SSH tunnel only (`host.docker.internal:11434`)
+- Document text truncated to 8,000 words before prompt submission (v1 context window policy)
 
 ### Deployment
-- Single command to start: `docker compose up`
-- No manual configuration required for standard deployment
-- Model pulled automatically on first run
+- Single command to start the VPS stack: `docker compose up`
+- Model pull is a **manual one-time bootstrap step** on the GPU server: `ollama pull qwen3:32b`
+- The GPU server and SSH tunnel must be running before `docker compose up` is executed
 
 ### Compatibility
 - **VPS** — Linux host with Docker and Docker Compose (no GPU required)

@@ -24,22 +24,36 @@
 Get the skeleton running. All services up, talking to each other, with no application logic yet.
 
 ### Tasks
+
+**GPU Server (one-time bootstrap)**
+- [ ] Confirm Ollama is installed and running on GPU server
+- [ ] Run `ollama pull qwen3:32b` — wait for model download to complete
+- [ ] Verify: `curl localhost:11434/api/tags` returns the model
+
+**VPS Setup**
 - [ ] Provision VPS (Ubuntu 22.04, 4 vCPU / 4GB RAM)
 - [ ] Install Docker + Docker Compose on VPS
-- [ ] Confirm Ollama is running on GPU server (`curl localhost:11434`)
-- [ ] Establish SSH tunnel from VPS to GPU server, confirm `localhost:11434` is reachable on VPS
-- [ ] Set up systemd service to keep tunnel persistent
+- [ ] Add SSH key for GPU server to VPS (`~/.ssh/vastai_rsa`)
+- [ ] Establish SSH tunnel from VPS to GPU server, confirm `localhost:11434` is reachable
+- [ ] Set up systemd `ollama-tunnel.service` to keep tunnel persistent (see `docs/INFRASTRUCTURE.md`)
+- [ ] Clone repo to VPS: `git clone https://github.com/ailabph/vault-docs.git`
+- [ ] Copy `.env.sample` to `.env`, fill in values (`OLLAMA_HOST=http://host.docker.internal:11434`)
+
+**Application Scaffold**
 - [ ] Scaffold repo structure: `backend/`, `frontend/`, `docker-compose.yml`
-- [ ] Set up GitHub Actions secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT` (see `docs/CICD.md`)
-- [ ] Create `.github/workflows/deploy.yml` — deploy to VPS on push to `main`
-- [ ] Write `docker-compose.yml` — frontend + backend services, env vars, volume mounts
+- [ ] Write `docker-compose.yml` — frontend + backend, `extra_hosts: host-gateway`, env vars
 - [ ] Write `backend/Dockerfile` and `frontend/Dockerfile`
-- [ ] Confirm `docker compose up` starts both services with no errors
+- [ ] Confirm `docker compose up` starts both services with no errors on VPS
 - [ ] `GET /api/health` returns 200 and confirms Ollama is reachable through tunnel
 - [ ] `POST /api/analyze` stub returns mock response (no real parsing yet)
 
+**CI/CD**
+- [ ] Set up GitHub Actions secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT` (see `docs/CICD.md`)
+- [ ] Create `.github/workflows/deploy.yml` — deploy to VPS on push to `main`
+- [ ] Verify first automated deploy succeeds
+
 ### Exit Criteria
-`docker compose up` starts cleanly. Health check passes. Tunnel is stable.
+GPU server has model loaded. VPS tunnel is stable. `docker compose up` starts cleanly. Health check passes. First GitHub Actions deploy succeeds.
 
 ---
 

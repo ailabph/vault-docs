@@ -78,6 +78,24 @@ Accepts a question and session ID. Retrieves document context and chat history, 
 ### `GET /api/health`
 Returns 200 if the backend is up and Ollama is reachable.
 
+## Text Truncation Policy
+
+Before any text is sent to Ollama, it is truncated to a maximum of **8,000 words**.
+
+This prevents context window overflow on large documents. Truncation happens in `parser.py` after extraction, before the text is passed to `llm.py`.
+
+```python
+def truncate(text: str, max_words: int = 8000) -> str:
+    words = text.split()
+    if len(words) <= max_words:
+        return text
+    return " ".join(words[:max_words]) + "\n\n[Document truncated at 8,000 words]"
+```
+
+The truncation notice is appended so the model is aware the document is incomplete. Proper chunking and map-reduce summarization is a future improvement.
+
+---
+
 ## parser.py
 
 Dispatches to the correct parser based on file extension. Returns a plain text string.
@@ -156,9 +174,10 @@ User:   [Document text on first turn, then questions]
 All values loaded from environment variables with sensible defaults:
 
 ```python
-OLLAMA_HOST     = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "qwen3:32b")
-MAX_UPLOAD_MB   = int(os.getenv("MAX_UPLOAD_SIZE_MB", 50))
+OLLAMA_HOST       = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
+OLLAMA_MODEL      = os.getenv("OLLAMA_MODEL", "qwen3:32b")
+MAX_UPLOAD_MB     = int(os.getenv("MAX_UPLOAD_SIZE_MB", 50))
+MAX_WORDS_PROMPT  = int(os.getenv("MAX_WORDS_PROMPT", 8000))
 ```
 
-> **Note:** The default is `http://localhost:11434` because the backend reaches Ollama via SSH tunnel on the VPS host. In a single-host Docker Compose setup (local dev), override with `http://ollama:11434` to use Docker internal DNS instead.
+> **Note:** `host.docker.internal` resolves to the Docker host via `extra_hosts: host-gateway` in `docker-compose.yml`. This routes backend → SSH tunnel → GPU server Ollama without needing `network_mode: host`.
