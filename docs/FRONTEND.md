@@ -32,8 +32,8 @@ Default view on load.
 ```
 ┌────────────────────────────────────────┐
 │        Air-Gapped Document Analyzer    │
-│    This document never leaves your     │
-│              system.                   │
+│  Your document never leaves our        │
+│      private infrastructure.           │
 │                                        │
 │   ┌──────────────────────────────┐     │
 │   │                              │     │
@@ -60,8 +60,8 @@ Replaces upload view. No user interaction during this state.
 │         Analyzing document...          │
 │         [spinner / progress bar]       │
 │                                        │
-│   This document never leaves your      │
-│   system. Processing locally.          │
+│   Processing on private infrastructure │
+│   No cloud. No third parties.          │
 │                                        │
 └────────────────────────────────────────┘
 ```
@@ -179,7 +179,7 @@ server {
 | Phrase | Location |
 |---|---|
 | "Air-Gapped Document Analyzer" | Page title / hero heading |
-| "This document never leaves your system" | Upload state subtitle + processing state |
+| "Your document never leaves our private infrastructure" | Upload state subtitle + processing state |
 | "100% locally hosted" | Upload state footer |
 | "Zero cloud dependencies" | Upload state footer |
 | "Powered by [model] • No external APIs" | Results state footer |

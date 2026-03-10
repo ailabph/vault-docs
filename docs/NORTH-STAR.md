@@ -30,9 +30,9 @@ The series establishes aiLab.ph's credibility in the air-gapped AI space before 
 
 This release succeeds if:
 
-1. A person with Docker installed can run it in one command with zero prior knowledge of the codebase
+1. A person can bring up the full stack with `docker compose up` on the VPS once the GPU server and SSH tunnel are bootstrapped
 2. They upload a document and receive a summary in under 30 seconds
-3. They feel confident their data stayed local — not because we told them, but because the interface makes it obvious
+3. They feel confident their document never touched a public cloud or third-party service — not because we told them, but because the interface makes it obvious
 4. The screenshot is worth sharing
 
 ## What We Are Not Building

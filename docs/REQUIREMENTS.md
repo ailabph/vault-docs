@@ -28,8 +28,8 @@
 ### UI Messaging (Required Verbatim)
 The following phrases must appear in the interface:
 - "Air-Gapped Document Analyzer"
-- "This document never leaves your system"
-- "100% locally hosted"
+- "Your document never leaves our private infrastructure"
+- "100% privately hosted — no cloud, no third parties"
 - "Zero cloud dependencies"
 - "Powered by [model name] • No external APIs"
 

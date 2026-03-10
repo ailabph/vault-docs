@@ -8,7 +8,8 @@ These are the conditions that must be true for vault-docs to be considered compl
 
 - [ ] `docker compose up` starts the full stack from a cold state with a single command
 - [ ] The application is accessible at the VPS public IP/domain on port `3000` after startup
-- [ ] No manual steps are required beyond running `docker compose up` (model pull is automated)
+- [ ] `ollama pull qwen3:32b` has been run manually on the GPU server prior to deployment (one-time bootstrap)
+- [ ] No manual steps are required on the VPS beyond running `docker compose up`
 - [ ] The stack restarts cleanly after `docker compose down && docker compose up`
 
 ## Document Upload
@@ -46,8 +47,8 @@ These are the conditions that must be true for vault-docs to be considered compl
 - [ ] Dark theme matching ailab.ph aesthetic
 - [ ] The following phrases appear in the interface:
   - "Air-Gapped Document Analyzer"
-  - "This document never leaves your system"
-  - "100% locally hosted"
+  - "Your document never leaves our private infrastructure"
+  - "100% privately hosted — no cloud, no third parties"
   - "Zero cloud dependencies"
   - "Powered by [model name] • No external APIs"
 - [ ] Interface is screenshot-worthy at 1920x1080
