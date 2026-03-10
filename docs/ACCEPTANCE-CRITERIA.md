@@ -7,7 +7,7 @@ These are the conditions that must be true for vault-docs to be considered compl
 ## Deployment
 
 - [ ] `docker compose up` starts the full stack from a cold state with a single command
-- [ ] The application is accessible at `http://localhost:3000` after startup
+- [ ] The application is accessible at the VPS public IP/domain on port `3000` after startup
 - [ ] No manual steps are required beyond running `docker compose up` (model pull is automated)
 - [ ] The stack restarts cleanly after `docker compose down && docker compose up`
 
@@ -37,7 +37,7 @@ These are the conditions that must be true for vault-docs to be considered compl
 ## Data Sovereignty
 
 - [ ] Zero outbound HTTP requests are made during document processing (verifiable via network monitor)
-- [ ] Ollama API calls are made to `localhost` / internal Docker network only
+- [ ] Ollama API calls are made to `localhost:11434` on the VPS host (via SSH tunnel to GPU server)
 - [ ] No document content is written to disk beyond the duration of the request (or clearly scoped temp files)
 - [ ] The interface displays all required sovereignty messaging (see UI section below)
 

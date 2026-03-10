@@ -30,6 +30,8 @@ Get the skeleton running. All services up, talking to each other, with no applic
 - [ ] Establish SSH tunnel from VPS to GPU server, confirm `localhost:11434` is reachable on VPS
 - [ ] Set up systemd service to keep tunnel persistent
 - [ ] Scaffold repo structure: `backend/`, `frontend/`, `docker-compose.yml`
+- [ ] Set up GitHub Actions secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT` (see `docs/CICD.md`)
+- [ ] Create `.github/workflows/deploy.yml` — deploy to VPS on push to `main`
 - [ ] Write `docker-compose.yml` — frontend + backend services, env vars, volume mounts
 - [ ] Write `backend/Dockerfile` and `frontend/Dockerfile`
 - [ ] Confirm `docker compose up` starts both services with no errors

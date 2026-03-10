@@ -156,7 +156,9 @@ User:   [Document text on first turn, then questions]
 All values loaded from environment variables with sensible defaults:
 
 ```python
-OLLAMA_HOST     = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+OLLAMA_HOST     = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "qwen3:32b")
 MAX_UPLOAD_MB   = int(os.getenv("MAX_UPLOAD_SIZE_MB", 50))
 ```
+
+> **Note:** The default is `http://localhost:11434` because the backend reaches Ollama via SSH tunnel on the VPS host. In a single-host Docker Compose setup (local dev), override with `http://ollama:11434` to use Docker internal DNS instead.

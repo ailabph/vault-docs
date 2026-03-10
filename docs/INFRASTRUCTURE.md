@@ -48,10 +48,6 @@ DigitalOcean, Hetzner, Linode, Vultr. A $6–12/month instance covers the minimu
 
 ---
 
-The backend on the VPS reaches Ollama on the GPU server via a persistent SSH tunnel that forwards `localhost:11434` on the VPS to `localhost:11434` on the GPU server.
-
----
-
 ## Network Topology
 
 ```

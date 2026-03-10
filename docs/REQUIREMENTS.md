@@ -52,7 +52,8 @@ The following phrases must appear in the interface:
 - Model pulled automatically on first run
 
 ### Compatibility
-- Runs on Linux hosts with NVIDIA GPU and `nvidia-container-toolkit`
+- **VPS** — Linux host with Docker and Docker Compose (no GPU required)
+- **GPU server** — Linux host with NVIDIA GPU, `nvidia-container-toolkit`, and Ollama installed
 - Browser support: latest Chrome, Firefox, Edge
 
 ---
