@@ -74,4 +74,4 @@ def truncate(text: str, max_words: int = MAX_WORDS_PROMPT) -> str:
     words = text.split()
     if len(words) <= max_words:
         return text
-    return " ".join(words[:max_words]) + "\n\n[Document truncated at 8,000 words]"
+    return " ".join(words[:max_words]) + f"\n\n[Document truncated at {max_words:,} words]"

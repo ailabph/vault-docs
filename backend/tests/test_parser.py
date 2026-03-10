@@ -121,7 +121,7 @@ class TestTruncation:
     def test_truncation_notice_appended(self):
         text = " ".join(["hello"] * 10000)
         result = truncate(text, max_words=5)
-        assert result.endswith("[Document truncated at 8,000 words]")
+        assert result.endswith("[Document truncated at 5 words]")
         # Only 5 words before the notice
         body = result.split("\n\n")[0]
         assert len(body.split()) == 5
