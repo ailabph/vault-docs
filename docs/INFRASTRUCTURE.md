@@ -9,6 +9,45 @@ The application runs across two separate machines:
 | **VPS** | Hosts the web app — frontend (Nginx) + backend (FastAPI) |
 | **GPU Server** | Runs Ollama inference — 4x RTX A5000, 96GB VRAM |
 
+---
+
+## VPS Provisioning
+
+The VPS does no ML work. All compute is on the GPU server. Requirements are modest.
+
+### Minimum (demo / proof of product)
+
+| Resource | Spec |
+|---|---|
+| CPU | 2 vCPUs |
+| RAM | 2GB |
+| Storage | 20GB SSD |
+| Bandwidth | 100 Mbps |
+| OS | Ubuntu 22.04 LTS |
+
+### Recommended (stable, room to grow)
+
+| Resource | Spec |
+|---|---|
+| CPU | 4 vCPUs |
+| RAM | 4GB |
+| Storage | 40GB SSD |
+| Bandwidth | 200 Mbps |
+| OS | Ubuntu 22.04 LTS |
+
+### Rationale
+
+- **RAM** — Docker + Nginx + FastAPI + text extraction libraries runs well under 1GB. 2GB is comfortable, 4GB gives headroom.
+- **CPU** — PyMuPDF and python-docx are fast, CPU-light operations. No ML inference on this server.
+- **Storage** — OS + Docker images (~2GB) + temp upload buffer. 20GB is sufficient.
+- **Network** — Low latency between VPS and GPU server matters more than raw bandwidth. Co-locate in the same datacenter region to minimize SSH tunnel overhead and improve response times.
+
+### Suggested Providers
+
+DigitalOcean, Hetzner, Linode, Vultr. A $6–12/month instance covers the minimum spec. Hetzner offers the best value for European regions.
+
+---
+
 The backend on the VPS reaches Ollama on the GPU server via a persistent SSH tunnel that forwards `localhost:11434` on the VPS to `localhost:11434` on the GPU server.
 
 ---
