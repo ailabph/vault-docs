@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vault-docs — Air-Gapped Document Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- State 1: Upload -->
+    <section id="state-upload" class="state">
+        <div class="container">
+            <h1 class="title">Air-Gapped Document Analyzer</h1>
+            <p class="subtitle">Your document never leaves our private infrastructure.</p>
+
+            <div id="drop-zone" data-max-mb="50">
+                <div class="drop-zone-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <p class="drop-zone-text">Drop PDF, TXT, or DOCX<br>or click to browse</p>
+                <input type="file" id="file-input" accept=".pdf,.txt,.docx" hidden>
+            </div>
+
+            <p id="upload-error" class="error-message hidden"></p>
+
+            <footer class="upload-footer">
+                <p>100% privately hosted — no cloud, no third parties</p>
+                <p>Zero cloud dependencies</p>
+            </footer>
+        </div>
+    </section>
+
+    <!-- State 2: Processing -->
+    <section id="state-processing" class="state hidden">
+        <div class="container">
+            <h2 class="processing-title">Analyzing document...</h2>
+            <div class="spinner"></div>
+            <p class="sovereignty-message">Processing on private infrastructure — No cloud. No third parties.</p>
+        </div>
+    </section>
+
+    <!-- State 3: Results + Chat -->
+    <section id="state-results" class="state hidden">
+        <div class="container results-container">
+            <div class="results-panel">
+                <h2 class="section-heading">Summary</h2>
+                <p id="summary" class="summary-text"></p>
+
+                <h2 class="section-heading">Key Points</h2>
+                <ul id="key-points" class="key-points-list"></ul>
+            </div>
+
+            <div class="chat-panel">
+                <h3 class="chat-heading">Ask a question about this document</h3>
+                <div id="chat-history" class="chat-history"></div>
+
+                <div class="chat-input-row">
+                    <input type="text" id="question" class="chat-input" placeholder="Type your question...">
+                    <button id="send-btn" class="send-btn">Send</button>
+                </div>
+            </div>
+
+            <footer class="results-footer">
+                <p data-model="qwen3.5:35b">Powered by <span id="model-name">qwen3.5:35b</span> - No external APIs</p>
+                <button id="reset-btn" class="reset-btn">Analyze another document</button>
+            </footer>
+        </div>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>

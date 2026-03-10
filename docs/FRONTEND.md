@@ -42,7 +42,8 @@ Default view on load.
 │   │                              │     │
 │   └──────────────────────────────┘     │
 │                                        │
-│   100% locally hosted                  │
+│   100% privately hosted —              │
+│   no cloud, no third parties           │
 │   Zero cloud dependencies              │
 └────────────────────────────────────────┘
 ```
@@ -92,7 +93,7 @@ Displayed after successful `/api/analyze` response.
 │  [chat history renders above input]    │
 │                                        │
 │  ─────────────────────────────────     │
-│  Powered by qwen3.5:35b • No external    │
+│  Powered by qwen3.5:35b - No external  │
 │  APIs          [Analyze another doc]   │
 └────────────────────────────────────────┘
 ```
@@ -142,16 +143,25 @@ const { answer } = await res.json()
 ```nginx
 server {
   listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  client_max_body_size 50m;
 
   location / {
-    root /usr/share/nginx/html;
     try_files $uri $uri/ /index.html;
   }
 
   location /api/ {
-    proxy_pass http://backend:8000;
+    proxy_pass http://backend:8000/api/;
     proxy_set_header Host $host;
-    client_max_body_size 50m;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
   }
 }
 ```
@@ -180,6 +190,6 @@ server {
 |---|---|
 | "Air-Gapped Document Analyzer" | Page title / hero heading |
 | "Your document never leaves our private infrastructure" | Upload state subtitle + processing state |
-| "100% locally hosted" | Upload state footer |
+| "100% privately hosted — no cloud, no third parties" | Upload state footer |
 | "Zero cloud dependencies" | Upload state footer |
-| "Powered by [model] • No external APIs" | Results state footer |
+| "Powered by [model] - No external APIs" | Results state footer |

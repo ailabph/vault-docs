@@ -11,3 +11,11 @@ services:
       - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-50}
       - MAX_WORDS_PROMPT=${MAX_WORDS_PROMPT:-8000}
     restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${APP_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

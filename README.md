@@ -37,7 +37,8 @@ Hardware tested on: 4x NVIDIA RTX A5000 (96GB total VRAM)
 
 ### Prerequisites
 - Docker and Docker Compose installed
-- GPU with sufficient VRAM (24GB+ recommended; 96GB for Qwen3.5 35B)
+- SSH tunnel to your GPU server running Ollama (see [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md))
+- GPU with sufficient VRAM on the remote server (24GB+ recommended; 96GB for Qwen3.5 35B)
 
 ### Run
 
@@ -47,7 +48,7 @@ cd vault-docs
 docker compose up
 ```
 
-Open `http://localhost:3000` in your browser.
+Open `http://localhost:3000` (or your VPS IP on port `APP_PORT`) in your browser.
 
 That's it. No API keys. No accounts. No cloud.
 
@@ -154,4 +155,4 @@ Apache 2.0 — see [LICENSE](./LICENSE)
 
 [aiLab.ph](https://ailab.ph) — building software where bugs have dollar signs attached.
 
-`Powered by Qwen3.5 35B • No external APIs`
+`Powered by Qwen3.5 35B - No external APIs`
