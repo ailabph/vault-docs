@@ -78,6 +78,11 @@
             // GPU instances
             renderGpuChips(data.running_models);
 
+            // GPU label
+            var gpuLabel = data.gpu_label || '';
+            var gpuLabelEl = document.getElementById('gpu-label');
+            if (gpuLabelEl) gpuLabelEl.textContent = gpuLabel;
+
             // Active model in footer + status bar
             var modelName = data.configured_model || '—';
             if (data.running_models && data.running_models.length > 0) {

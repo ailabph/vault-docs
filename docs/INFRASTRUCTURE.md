@@ -159,18 +159,38 @@ Ollama runs directly on the GPU server (not in Docker, or in Docker with GPU pas
 
 ```bash
 # Pull model (one-time)
-ollama pull qwen3.5:35b
+ollama pull qwen3.5:9b
 
 # Ollama listens on localhost:11434 by default
 # No exposure needed — SSH tunnel handles access from VPS
 ```
 
+### Current Hardware
+
 | Resource | Spec |
 |---|---|
-| GPUs | 4x NVIDIA RTX A5000 |
-| Total VRAM | 96GB |
-| Model | Qwen3.5 35B |
+| GPU | NVIDIA RTX 5090 |
+| VRAM | 32GB |
+| Model | Qwen3.5 9B (~9.5GB VRAM) |
 | Ollama port | 11434 (localhost only) |
+
+### Swapping GPU Servers
+
+The architecture is designed for easy GPU server swaps. When migrating to a new GPU server:
+
+1. **Update SSH tunnel** — edit `/etc/systemd/system/ollama-tunnel.service` with the new server IP/port
+2. **Restart tunnel** — `systemctl restart ollama-tunnel`
+3. **Update `.env`** — set `GPU_LABEL` to match the new hardware (shown in the UI status bar)
+4. **Pull model on new server** — `ollama pull qwen3.5:9b` (or whichever model)
+5. **Rebuild app** — `docker compose up -d --build` (only needed if `GPU_LABEL` changed)
+
+The backend doesn't care which GPU server it's talking to — it just needs Ollama at `localhost:11434` via the tunnel. No code changes required.
+
+| `.env` Variable | Purpose |
+|---|---|
+| `OLLAMA_HOST` | Tunneled Ollama endpoint (usually unchanged) |
+| `OLLAMA_MODEL` | Model name to use for inference |
+| `GPU_LABEL` | Hardware label shown in UI status bar |
 
 ---
 
@@ -178,10 +198,11 @@ ollama pull qwen3.5:35b
 
 | Variable | Value | Description |
 |---|---|---|
-| `OLLAMA_MODEL` | `qwen3.5:35b` | Model name |
+| `OLLAMA_MODEL` | `qwen3.5:9b` | Model name |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Tunneled Ollama endpoint (via extra_hosts) |
 | `APP_PORT` | `3000` | Public frontend port |
 | `MAX_UPLOAD_SIZE_MB` | `50` | Max upload size |
+| `GPU_LABEL` | `RTX 5090 · 32GB VRAM` | GPU hardware label shown in UI status bar |
 
 ---
 

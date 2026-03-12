@@ -439,6 +439,15 @@ html, body {
     color: var(--text-muted);
 }
 
+.gpu-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    opacity: 0.8;
+    border-left: 1px solid var(--border);
+    padding-left: 0.5rem;
+    margin-left: 0.25rem;
+}
+
 .gpu-instances {
     display: flex;
     align-items: center;

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import llm
 import parser
 import session
-from config import MAX_UPLOAD_SIZE_MB, OLLAMA_HOST, OLLAMA_MODEL
+from config import GPU_LABEL, MAX_UPLOAD_SIZE_MB, OLLAMA_HOST, OLLAMA_MODEL
 
 app = FastAPI(title="vault-docs", version="0.1.0")
 
@@ -61,6 +61,7 @@ async def system_status():
     result = {
         "ollama": "unreachable",
         "configured_model": OLLAMA_MODEL,
+        "gpu_label": GPU_LABEL,
         "running_models": [],
         "available_models": [],
     }
