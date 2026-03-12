@@ -43,63 +43,117 @@
         return 'temp-cool';
     }
 
-    function renderGpuHardware(gpus, gpuSource) {
+    function renderGpuHardware(gpus) {
         var hardwareEl = document.getElementById('gpu-hardware');
         if (!hardwareEl) return;
 
-        if (!gpus || gpus.length === 0) {
-            hardwareEl.innerHTML = '';
-            return;
-        }
+        hardwareEl.innerHTML = '';
 
-        hardwareEl.innerHTML = gpus.map(function (g) {
+        if (!gpus || gpus.length === 0) return;
+
+        gpus.forEach(function (g) {
             var vramPct = g.vram_total_mb > 0
                 ? Math.round(g.vram_used_mb / g.vram_total_mb * 100)
                 : 0;
             var utilPct = g.utilization_percent || 0;
             var temp = g.temperature_c || 0;
 
-            return '<div class="gpu-hw-chip">' +
-                '<span class="chip-icon">⬢</span>' +
-                '<span class="gpu-hw-name">' + g.name + '</span>' +
-                '<span class="temp-badge ' + tempBadgeClass(temp) + '">' + temp + '°C</span>' +
-                '<div class="gpu-bar-group">' +
-                    '<div class="gpu-bar-container" title="GPU ' + utilPct + '%">' +
-                        '<div class="gpu-bar-fill ' + gpuBarClass(utilPct) + '" style="width:' + utilPct + '%"></div>' +
-                    '</div>' +
-                    '<span class="bar-label">GPU ' + utilPct + '%</span>' +
-                '</div>' +
-                '<div class="gpu-bar-group">' +
-                    '<div class="gpu-bar-container" title="VRAM ' + vramPct + '%">' +
-                        '<div class="gpu-bar-fill ' + gpuBarClass(vramPct) + '" style="width:' + vramPct + '%"></div>' +
-                    '</div>' +
-                    '<span class="bar-label">VRAM ' + vramPct + '%</span>' +
-                '</div>' +
-            '</div>';
-        }).join('');
+            var chip = document.createElement('div');
+            chip.className = 'gpu-hw-chip';
+
+            var icon = document.createElement('span');
+            icon.className = 'chip-icon';
+            icon.textContent = '⬢';
+            chip.appendChild(icon);
+
+            var nameEl = document.createElement('span');
+            nameEl.className = 'gpu-hw-name';
+            nameEl.textContent = g.name;
+            chip.appendChild(nameEl);
+
+            var tempBadge = document.createElement('span');
+            tempBadge.className = 'temp-badge ' + tempBadgeClass(temp);
+            tempBadge.textContent = temp + '°C';
+            chip.appendChild(tempBadge);
+
+            // GPU utilization bar
+            chip.appendChild(createBarGroup('GPU', utilPct));
+            // VRAM bar
+            chip.appendChild(createBarGroup('VRAM', vramPct));
+
+            hardwareEl.appendChild(chip);
+        });
+    }
+
+    function createBarGroup(label, pct) {
+        var group = document.createElement('div');
+        group.className = 'gpu-bar-group';
+
+        var container = document.createElement('div');
+        container.className = 'gpu-bar-container';
+        container.title = label + ' ' + pct + '%';
+
+        var fill = document.createElement('div');
+        fill.className = 'gpu-bar-fill ' + gpuBarClass(pct);
+        fill.style.width = pct + '%';
+        container.appendChild(fill);
+        group.appendChild(container);
+
+        var labelEl = document.createElement('span');
+        labelEl.className = 'bar-label';
+        labelEl.textContent = label + ' ' + pct + '%';
+        group.appendChild(labelEl);
+
+        return group;
     }
 
     function renderGpuChips(models) {
+        gpuInstances.innerHTML = '';
+
         if (!models || models.length === 0) {
-            gpuInstances.innerHTML = '<span style="color:var(--text-muted);font-size:0.75rem;">No models loaded</span>';
+            var empty = document.createElement('span');
+            empty.style.cssText = 'color:var(--text-muted);font-size:0.75rem;';
+            empty.textContent = 'No models loaded';
+            gpuInstances.appendChild(empty);
             return;
         }
-        gpuInstances.innerHTML = models.map(function (m) {
+
+        models.forEach(function (m) {
             var pct = m.gpu_percent || 0;
-            var details = m.details || {};
-            var paramSize = details.parameter_size || '';
-            var quant = details.quantization || '';
-            var label = paramSize ? (paramSize + (quant ? ' ' + quant : '')) : m.size;
-            return '<div class="gpu-chip">' +
-                '<span class="chip-icon">⬢</span>' +
-                '<span class="chip-label">GPU</span>' +
-                '<span>' + m.name + '</span>' +
-                '<div class="gpu-bar-container" title="' + pct + '% VRAM">' +
-                    '<div class="gpu-bar-fill ' + gpuBarClass(pct) + '" style="width:' + pct + '%"></div>' +
-                '</div>' +
-                '<span style="color:var(--text-muted)">' + pct + '% · ' + m.size_vram + '</span>' +
-            '</div>';
-        }).join('');
+
+            var chip = document.createElement('div');
+            chip.className = 'gpu-chip';
+
+            var icon = document.createElement('span');
+            icon.className = 'chip-icon';
+            icon.textContent = '⬢';
+            chip.appendChild(icon);
+
+            var labelEl = document.createElement('span');
+            labelEl.className = 'chip-label';
+            labelEl.textContent = 'GPU';
+            chip.appendChild(labelEl);
+
+            var nameEl = document.createElement('span');
+            nameEl.textContent = m.name;
+            chip.appendChild(nameEl);
+
+            var barContainer = document.createElement('div');
+            barContainer.className = 'gpu-bar-container';
+            barContainer.title = pct + '% VRAM';
+            var barFill = document.createElement('div');
+            barFill.className = 'gpu-bar-fill ' + gpuBarClass(pct);
+            barFill.style.width = pct + '%';
+            barContainer.appendChild(barFill);
+            chip.appendChild(barContainer);
+
+            var info = document.createElement('span');
+            info.style.color = 'var(--text-muted)';
+            info.textContent = pct + '% · ' + m.size_vram;
+            chip.appendChild(info);
+
+            gpuInstances.appendChild(chip);
+        });
     }
 
     async function pollStatus() {
@@ -118,7 +172,7 @@
             }
 
             // GPU hardware (live from GPU agent)
-            renderGpuHardware(data.gpus, data.gpu_source);
+            renderGpuHardware(data.gpus);
 
             // GPU model instances (from Ollama)
             renderGpuChips(data.running_models);

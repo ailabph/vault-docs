@@ -192,7 +192,7 @@ backend:
 | `frontend/style.css` | Styles for GPU cards, temp badges |
 | `frontend/index.html` | Minor — update status bar structure if needed |
 | `docker-compose.yml` | Add `GPU_AGENT_HOST` to backend env |
-| `ollama-tunnel.service` | Add `-L 0.0.0.0:5111:localhost:5111` |
+| `ollama-tunnel.service` | Add `-L 127.0.0.1:5111:localhost:5111` |
 | `docs/INFRASTRUCTURE.md` | Document GPU agent setup |
 
 ---
