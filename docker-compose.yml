@@ -10,6 +10,8 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3.5:35b}
       - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-50}
       - MAX_WORDS_PROMPT=${MAX_WORDS_PROMPT:-8000}
+      - GPU_LABEL=${GPU_LABEL:-RTX 5090 · 32GB VRAM}
+      - GPU_AGENT_HOST=${GPU_AGENT_HOST:-http://host.docker.internal:5111}
     restart: unless-stopped
 
   frontend:

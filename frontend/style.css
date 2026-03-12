@@ -497,6 +497,88 @@ html, body {
 .gpu-bar-fill.medium { background: #ffc107; }
 .gpu-bar-fill.high   { background: var(--error); }
 
+/* ── GPU Source Badge ───────────────────────────────────────────── */
+.gpu-source-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-left: 0.4rem;
+}
+
+.gpu-source-badge.live {
+    background: rgba(0, 230, 118, 0.15);
+    color: #00e676;
+    border: 1px solid rgba(0, 230, 118, 0.3);
+}
+
+.gpu-source-badge.static {
+    background: rgba(136, 136, 136, 0.15);
+    color: var(--text-muted);
+    border: 1px solid rgba(136, 136, 136, 0.3);
+}
+
+/* ── GPU Hardware Cards (live from GPU agent) ──────────────────── */
+.gpu-hardware {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.gpu-hw-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+}
+
+.gpu-hw-name {
+    font-weight: 500;
+    margin-right: 0.25rem;
+}
+
+.temp-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+}
+
+.temp-badge.temp-cool {
+    background: rgba(0, 230, 118, 0.15);
+    color: #00e676;
+}
+
+.temp-badge.temp-warm {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+}
+
+.temp-badge.temp-hot {
+    background: rgba(255, 68, 68, 0.15);
+    color: var(--error);
+}
+
+.gpu-bar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.bar-label {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    white-space: nowrap;
+}
+
 .model-info {
     flex-shrink: 0;
 }

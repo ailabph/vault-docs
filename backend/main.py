@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import llm
 import parser
 import session
-from config import GPU_LABEL, MAX_UPLOAD_SIZE_MB, OLLAMA_HOST, OLLAMA_MODEL
+from config import GPU_AGENT_HOST, GPU_LABEL, MAX_UPLOAD_SIZE_MB, OLLAMA_HOST, OLLAMA_MODEL
 
 app = FastAPI(title="vault-docs", version="0.1.0")
 
@@ -57,18 +57,40 @@ async def health():
 
 @app.get("/api/status")
 async def system_status():
-    """Return real-time GPU/model status from Ollama."""
+    """Return real-time GPU/model status from Ollama + GPU agent."""
     result = {
         "ollama": "unreachable",
         "configured_model": OLLAMA_MODEL,
         "gpu_label": GPU_LABEL,
+        "gpu_source": "static",
+        "gpus": [],
         "running_models": [],
         "available_models": [],
     }
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            # Get running models (GPU instances)
+            # ── GPU Agent (live hardware info) ─────────────────────
+            try:
+                gpu_resp = await client.get(
+                    f"{GPU_AGENT_HOST}/gpu-status", timeout=3.0
+                )
+                if gpu_resp.status_code == 200:
+                    gpu_data = gpu_resp.json()
+                    if gpu_data.get("ok"):
+                        result["gpus"] = gpu_data.get("gpus", [])
+                        result["gpu_label"] = gpu_data.get("summary", GPU_LABEL)
+                        result["gpu_source"] = "live"
+                    else:
+                        # Agent responded but nvidia-smi unavailable
+                        import logging
+                        logging.warning(
+                            "GPU agent error: %s", gpu_data.get("error", "unknown")
+                        )
+            except Exception:
+                pass  # GPU agent unreachable — fall back to static GPU_LABEL
+
+            # ── Ollama: running models ─────────────────────────────
             try:
                 ps_resp = await client.get(f"{OLLAMA_HOST}/api/ps")
                 if ps_resp.status_code == 200:
@@ -94,7 +116,7 @@ async def system_status():
             except Exception:
                 pass
 
-            # Get available models
+            # ── Ollama: available models ───────────────────────────
             try:
                 tags_resp = await client.get(f"{OLLAMA_HOST}/api/tags")
                 if tags_resp.status_code == 200:

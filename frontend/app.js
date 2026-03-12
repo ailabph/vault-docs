@@ -37,6 +37,48 @@
         return 'low';
     }
 
+    function tempBadgeClass(temp) {
+        if (temp >= 80) return 'temp-hot';
+        if (temp >= 60) return 'temp-warm';
+        return 'temp-cool';
+    }
+
+    function renderGpuHardware(gpus, gpuSource) {
+        var hardwareEl = document.getElementById('gpu-hardware');
+        if (!hardwareEl) return;
+
+        if (!gpus || gpus.length === 0) {
+            hardwareEl.innerHTML = '';
+            return;
+        }
+
+        hardwareEl.innerHTML = gpus.map(function (g) {
+            var vramPct = g.vram_total_mb > 0
+                ? Math.round(g.vram_used_mb / g.vram_total_mb * 100)
+                : 0;
+            var utilPct = g.utilization_percent || 0;
+            var temp = g.temperature_c || 0;
+
+            return '<div class="gpu-hw-chip">' +
+                '<span class="chip-icon">⬢</span>' +
+                '<span class="gpu-hw-name">' + g.name + '</span>' +
+                '<span class="temp-badge ' + tempBadgeClass(temp) + '">' + temp + '°C</span>' +
+                '<div class="gpu-bar-group">' +
+                    '<div class="gpu-bar-container" title="GPU ' + utilPct + '%">' +
+                        '<div class="gpu-bar-fill ' + gpuBarClass(utilPct) + '" style="width:' + utilPct + '%"></div>' +
+                    '</div>' +
+                    '<span class="bar-label">GPU ' + utilPct + '%</span>' +
+                '</div>' +
+                '<div class="gpu-bar-group">' +
+                    '<div class="gpu-bar-container" title="VRAM ' + vramPct + '%">' +
+                        '<div class="gpu-bar-fill ' + gpuBarClass(vramPct) + '" style="width:' + vramPct + '%"></div>' +
+                    '</div>' +
+                    '<span class="bar-label">VRAM ' + vramPct + '%</span>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
     function renderGpuChips(models) {
         if (!models || models.length === 0) {
             gpuInstances.innerHTML = '<span style="color:var(--text-muted);font-size:0.75rem;">No models loaded</span>';
@@ -75,13 +117,22 @@
                 statusText.textContent = 'Ollama Offline';
             }
 
-            // GPU instances
+            // GPU hardware (live from GPU agent)
+            renderGpuHardware(data.gpus, data.gpu_source);
+
+            // GPU model instances (from Ollama)
             renderGpuChips(data.running_models);
 
-            // GPU label
+            // GPU label + source badge
             var gpuLabel = data.gpu_label || '';
+            var gpuSource = data.gpu_source || 'static';
             var gpuLabelEl = document.getElementById('gpu-label');
             if (gpuLabelEl) gpuLabelEl.textContent = gpuLabel;
+            var gpuSourceEl = document.getElementById('gpu-source-badge');
+            if (gpuSourceEl) {
+                gpuSourceEl.textContent = gpuSource === 'live' ? 'LIVE' : 'STATIC';
+                gpuSourceEl.className = 'gpu-source-badge ' + (gpuSource === 'live' ? 'live' : 'static');
+            }
 
             // Active model in footer + status bar
             var modelName = data.configured_model || '—';
