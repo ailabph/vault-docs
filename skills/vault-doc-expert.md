@@ -79,6 +79,7 @@ Bound to `0.0.0.0` so Docker containers can reach it via `host.docker.internal:1
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/api/health` | GET | Readiness check — 200 if Ollama reachable, 503 if not |
+| `/api/status` | GET | Real-time GPU/model status — running models, VRAM usage, GPU label, available models |
 | `/api/analyze` | POST | Upload file → extract text → Ollama → summary + key points |
 | `/api/chat` | POST | Q&A with document context + chat history |
 
@@ -111,9 +112,10 @@ Error codes: 400 (bad input), 404 (session not found), 413 (file too large), 503
 | Variable | Default | Description |
 |---|---|---|
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama endpoint |
-| `OLLAMA_MODEL` | `qwen3.5:35b` | Model name (currently overridden to 9b in .env) |
+| `OLLAMA_MODEL` | `qwen3.5:9b` | Model name |
 | `MAX_UPLOAD_SIZE_MB` | `50` | Max upload size |
 | `MAX_WORDS_PROMPT` | `8000` | Text truncation limit |
+| `GPU_LABEL` | `RTX 5090 · 32GB VRAM` | GPU hardware label shown in UI status bar |
 
 ---
 
@@ -125,6 +127,11 @@ Three UI states: **Upload** → **Processing** → **Results + Chat**
 - Dark theme with CSS custom properties (ailab.ph cyan accent `#00e5ff`)
 - Nginx serves static files, proxies `/api/*` to `backend:8000`
 - Required sovereignty messaging embedded in all states
+- **Real-time status bar** (fixed bottom) — polls `/api/status` every 5s:
+  - Connection indicator (green/red dot)
+  - GPU hardware label (from `GPU_LABEL` env var)
+  - Running model chips with VRAM usage bars (green/yellow/red)
+  - Active model name
 - `nginx.conf`: `proxy_read_timeout 120s` (may need bump for large docs)
 
 ---
@@ -163,6 +170,7 @@ OLLAMA_MODEL=qwen3.5:9b
 MAX_UPLOAD_SIZE_MB=50
 MAX_WORDS_PROMPT=8000
 APP_PORT=3000
+GPU_LABEL=RTX 5090 · 32GB VRAM
 ```
 
 ---

@@ -11,9 +11,10 @@ Upload a document. Get a summary, key points, and a chat interface to ask questi
 ## What It Does
 
 1. **Upload** — Drag and drop a PDF, TXT, or DOCX
-2. **Analyze** — A privately hosted LLM (qwen3.5:35b) extracts text, generates a 3–5 sentence summary, and pulls key points
+2. **Analyze** — A privately hosted LLM (Qwen3.5 9B) extracts text, generates a 3–5 sentence summary, and pulls key points
 3. **Ask** — Chat with the document using a built-in Q&A interface
-4. **Trust** — Processed entirely on private infrastructure. No cloud APIs. No telemetry.
+4. **Monitor** — Real-time GPU status bar shows connection state, loaded models with VRAM usage, and hardware info
+5. **Trust** — Processed entirely on private infrastructure. No cloud APIs. No telemetry.
 
 This is the first release in aiLab.ph's **Weekly Proof of Product** series — open-source tools that demonstrate sovereign AI is real, production-ready, and available today.
 
@@ -23,13 +24,13 @@ This is the first release in aiLab.ph's **Weekly Proof of Product** series — o
 
 | Layer | Technology |
 |---|---|
-| LLM Inference | [Ollama](https://ollama.com) with Qwen3.5 35B |
+| LLM Inference | [Ollama](https://ollama.com) with Qwen3.5 9B |
 | Document Parsing | Python (PyMuPDF, python-docx) |
 | Backend | FastAPI |
-| Frontend | Vanilla JS — dark theme |
+| Frontend | Vanilla JS — dark theme, real-time GPU status bar |
 | Deployment | Docker Compose |
 
-Hardware tested on: 4x NVIDIA RTX A5000 (96GB total VRAM)
+Current hardware: NVIDIA RTX 5090 (32GB VRAM)
 
 ---
 
@@ -38,7 +39,7 @@ Hardware tested on: 4x NVIDIA RTX A5000 (96GB total VRAM)
 ### Prerequisites
 - Docker and Docker Compose installed
 - SSH tunnel to your GPU server running Ollama (see [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md))
-- GPU with sufficient VRAM on the remote server (24GB+ recommended; 96GB for Qwen3.5 35B)
+- GPU with sufficient VRAM on the remote server (16GB+ recommended for Qwen3.5 9B)
 
 ### Run
 
@@ -66,7 +67,7 @@ User uploads document
   TXT → direct read
         │
         ▼
-  Ollama (Qwen3.5 35B)
+  Ollama (Qwen3.5 9B)
   ┌─────────────────┐
   │  Summary        │
   │  Key Points     │
@@ -88,22 +89,27 @@ Edit `.env` (or `docker-compose.yml` environment) to change the model. Edit `APP
 
 ```bash
 # .env
-OLLAMA_MODEL=qwen3.5:35b     # swap for any model you have pulled
+OLLAMA_MODEL=qwen3.5:9b      # swap for any model you have pulled
 APP_PORT=3000                 # public frontend port (used in ports: mapping)
+GPU_LABEL=RTX 5090 · 32GB VRAM  # shown in the UI status bar
 ```
 
 To use a different model:
 
 ```bash
 ollama pull mistral
-# then set OLLAMA_MODEL=mistral in docker-compose.yml
+# then set OLLAMA_MODEL=mistral in .env
 ```
+
+### Swapping GPU Servers
+
+The app is designed for easy GPU server swaps — update the SSH tunnel, change `GPU_LABEL` in `.env`, and rebuild. See [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) for details.
 
 ---
 
 ## Performance
 
-Tested on a 10-page PDF with Qwen3.5 35B:
+Tested on a 10-page PDF with Qwen3.5 9B:
 
 | Operation | Time |
 |---|---|
@@ -155,4 +161,4 @@ Apache 2.0 — see [LICENSE](./LICENSE)
 
 [aiLab.ph](https://ailab.ph) — building software where bugs have dollar signs attached.
 
-`Powered by Qwen3.5 35B - No external APIs`
+`Powered by Qwen3.5 9B - No external APIs`
