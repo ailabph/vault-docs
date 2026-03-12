@@ -376,6 +376,133 @@ html, body {
     color: var(--bg-primary);
 }
 
+/* ── Status Bar ────────────────────────────────────────────────── */
+.status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    padding: 0.5rem 1.5rem;
+    z-index: 1000;
+    font-size: 0.8rem;
+}
+
+.status-bar-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.status-dot.online {
+    background: #00e676;
+    box-shadow: 0 0 6px rgba(0, 230, 118, 0.5);
+}
+
+.status-dot.offline {
+    background: var(--error);
+    box-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
+}
+
+.status-dot.loading {
+    background: #ffc107;
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.4);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.status-text {
+    color: var(--text-muted);
+}
+
+.gpu-instances {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.gpu-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+}
+
+.gpu-chip .chip-icon {
+    color: var(--accent);
+    font-size: 0.7rem;
+}
+
+.gpu-chip .chip-label {
+    color: var(--text-muted);
+    margin-right: 0.2rem;
+}
+
+.gpu-bar-container {
+    width: 48px;
+    height: 6px;
+    background: var(--bg-primary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.gpu-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+
+.gpu-bar-fill.low    { background: #00e676; }
+.gpu-bar-fill.medium { background: #ffc107; }
+.gpu-bar-fill.high   { background: var(--error); }
+
+.model-info {
+    flex-shrink: 0;
+}
+
+.active-model {
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+/* Add bottom padding to states so status bar doesn't overlap */
+.state {
+    padding-bottom: 3rem;
+}
+
 /* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 640px) {
     .title {

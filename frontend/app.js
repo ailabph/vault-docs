@@ -22,6 +22,84 @@
     const sendBtn         = document.getElementById('send-btn');
     const resetBtn        = document.getElementById('reset-btn');
 
+    
+
+    // ── Status Bar — Real-time GPU & Model ──────────────────────
+    const statusDot       = document.getElementById('status-dot');
+    const statusText      = document.getElementById('status-text');
+    const gpuInstances    = document.getElementById('gpu-instances');
+    const activeModelEl   = document.getElementById('active-model');
+    const STATUS_INTERVAL = 5000;
+
+    function gpuBarClass(pct) {
+        if (pct >= 80) return 'high';
+        if (pct >= 40) return 'medium';
+        return 'low';
+    }
+
+    function renderGpuChips(models) {
+        if (!models || models.length === 0) {
+            gpuInstances.innerHTML = '<span style="color:var(--text-muted);font-size:0.75rem;">No models loaded</span>';
+            return;
+        }
+        gpuInstances.innerHTML = models.map(function (m) {
+            var pct = m.gpu_percent || 0;
+            var details = m.details || {};
+            var paramSize = details.parameter_size || '';
+            var quant = details.quantization || '';
+            var label = paramSize ? (paramSize + (quant ? ' ' + quant : '')) : m.size;
+            return '<div class="gpu-chip">' +
+                '<span class="chip-icon">⬢</span>' +
+                '<span class="chip-label">GPU</span>' +
+                '<span>' + m.name + '</span>' +
+                '<div class="gpu-bar-container" title="' + pct + '% VRAM">' +
+                    '<div class="gpu-bar-fill ' + gpuBarClass(pct) + '" style="width:' + pct + '%"></div>' +
+                '</div>' +
+                '<span style="color:var(--text-muted)">' + pct + '% · ' + m.size_vram + '</span>' +
+            '</div>';
+        }).join('');
+    }
+
+    async function pollStatus() {
+        try {
+            var resp = await fetch('/api/status');
+            if (!resp.ok) throw new Error('status ' + resp.status);
+            var data = await resp.json();
+
+            // Connection status
+            if (data.ollama === 'reachable') {
+                statusDot.className = 'status-dot online';
+                statusText.textContent = 'Ollama Online';
+            } else {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = 'Ollama Offline';
+            }
+
+            // GPU instances
+            renderGpuChips(data.running_models);
+
+            // Active model in footer + status bar
+            var modelName = data.configured_model || '—';
+            if (data.running_models && data.running_models.length > 0) {
+                modelName = data.running_models[0].name;
+            }
+            activeModelEl.textContent = '⚡ ' + modelName;
+
+            var footerModelEl = document.getElementById('model-name');
+            if (footerModelEl) footerModelEl.textContent = modelName;
+
+        } catch (e) {
+            statusDot.className = 'status-dot offline';
+            statusText.textContent = 'Server Unreachable';
+            gpuInstances.innerHTML = '';
+            activeModelEl.textContent = '—';
+        }
+    }
+
+    // Initial poll + interval
+    pollStatus();
+    setInterval(pollStatus, STATUS_INTERVAL);
+
     // ── Allowed extensions and size ───────────────────────────────
     const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt'];
 

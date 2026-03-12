@@ -432,3 +432,11 @@ AGENT*
 .claude*
 .opencode*
 .plans/
+# OpenClaw workspace files
+AGENTS.md
+SOUL.md
+IDENTITY.md
+USER.md
+TOOLS.md
+HEARTBEAT.md
+MEMORY.md

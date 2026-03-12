@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import llm
 import parser
 import session
-from config import MAX_UPLOAD_SIZE_MB, OLLAMA_HOST
+from config import MAX_UPLOAD_SIZE_MB, OLLAMA_HOST, OLLAMA_MODEL
 
 app = FastAPI(title="vault-docs", version="0.1.0")
 
@@ -52,7 +52,79 @@ async def health():
             content={"status": "degraded", "ollama": "unreachable"},
         )
 
-    return {"status": "ok", "ollama": "reachable"}
+    return {"status": "ok", "ollama": "reachable", "model": OLLAMA_MODEL}
+
+
+@app.get("/api/status")
+async def system_status():
+    """Return real-time GPU/model status from Ollama."""
+    result = {
+        "ollama": "unreachable",
+        "configured_model": OLLAMA_MODEL,
+        "running_models": [],
+        "available_models": [],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # Get running models (GPU instances)
+            try:
+                ps_resp = await client.get(f"{OLLAMA_HOST}/api/ps")
+                if ps_resp.status_code == 200:
+                    ps_data = ps_resp.json()
+                    models = ps_data.get("models", [])
+                    for m in models:
+                        size_vram = m.get("size_vram", 0)
+                        size = m.get("size", 0)
+                        gpu_pct = round((size_vram / size * 100), 1) if size > 0 else 0
+                        running = {
+                            "name": m.get("name", "unknown"),
+                            "size": _format_bytes(size),
+                            "size_vram": _format_bytes(size_vram),
+                            "gpu_percent": gpu_pct,
+                            "expires_at": m.get("expires_at", ""),
+                            "details": {
+                                "family": m.get("details", {}).get("family", ""),
+                                "parameter_size": m.get("details", {}).get("parameter_size", ""),
+                                "quantization": m.get("details", {}).get("quantization_level", ""),
+                            },
+                        }
+                        result["running_models"].append(running)
+            except Exception:
+                pass
+
+            # Get available models
+            try:
+                tags_resp = await client.get(f"{OLLAMA_HOST}/api/tags")
+                if tags_resp.status_code == 200:
+                    tags_data = tags_resp.json()
+                    for m in tags_data.get("models", []):
+                        result["available_models"].append({
+                            "name": m.get("name", ""),
+                            "size": _format_bytes(m.get("size", 0)),
+                            "parameter_size": m.get("details", {}).get("parameter_size", ""),
+                            "family": m.get("details", {}).get("family", ""),
+                            "quantization": m.get("details", {}).get("quantization_level", ""),
+                        })
+                    result["ollama"] = "reachable"
+            except Exception:
+                pass
+
+    except Exception:
+        pass
+
+    return result
+
+
+def _format_bytes(b: int) -> str:
+    """Format bytes to human-readable string."""
+    if b <= 0:
+        return "0 B"
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if b < 1024:
+            return f"{b:.1f} {unit}"
+        b /= 1024
+    return f"{b:.1f} PB"
 
 
 @app.post("/api/analyze")
